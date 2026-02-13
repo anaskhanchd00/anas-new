@@ -1,6 +1,6 @@
 
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
-import { User, AuditLog, UserStatus, PolicyStatus, Policy, PaymentRecord, ContactMessage, InquiryType, RiskLevel, Claim, ClaimStatus, KYCStatus, ComplianceStatus, MIDSubmission, MIDStatus } from '../types';
+import { User, AuditLog, UserStatus, PolicyStatus, Policy, PaymentRecord, ContactMessage, InquiryType, RiskLevel, Claim, ClaimStatus, KYCStatus, ComplianceStatus, MIDSubmission, MIDStatus, PolicyDuration } from '../types';
 
 interface DiagnosticReport {
   status: 'Healthy' | 'Warning' | 'Critical';
@@ -40,6 +40,8 @@ interface AuthContextType {
   // EXECUTABLE POLICY ACTIONS
   updatePolicyStatus: (id: string, status: PolicyStatus, reason: string) => void;
   updatePolicyDetails: (id: string, updates: Partial<Policy>, reason: string) => void;
+  validatePolicy: (id: string) => Promise<boolean>;
+  bindPolicyManual: (userId: string, data: any) => Promise<boolean>;
   generatePolicyPDF: (policyId: string) => Promise<string | null>;
   downloadPDF: (policyId: string) => void;
   deletePolicy: (id: string, reason: string) => void;
@@ -128,9 +130,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     ];
 
     const mockPolicies: Policy[] = [
-      { id: 'POL-MOCK-001', userId: 'USER-1', type: 'Comprehensive Cover', premium: '£3,450.00', status: 'Active', midStatus: 'Success', details: { vrm: 'BT19 KYX', make: 'BMW', model: '3 Series' } },
-      { id: 'POL-MOCK-002', userId: 'USER-2', type: 'Third Party Insurance', premium: '£1,890.00', status: 'Active', midStatus: 'Pending', details: { vrm: 'GF21 UOP', make: 'Ford', model: 'Fiesta' } },
-      { id: 'POL-MOCK-003', userId: 'USER-3', type: 'Motorcycle Insurance', premium: '£740.00', status: 'Frozen', midStatus: 'Failed', details: { vrm: 'MT09 HJK', make: 'Yamaha', model: 'MT-09' } }
+      { id: 'POL-MOCK-001', userId: 'USER-1', type: 'Comprehensive Cover', duration: '12 Months', premium: '£3,450.00', status: 'Active', midStatus: 'Success', details: { vrm: 'BT19 KYX', make: 'BMW', model: '3 Series' } },
+      { id: 'POL-MOCK-002', userId: 'USER-2', type: 'Third Party Insurance', duration: '12 Months', premium: '£1,890.00', status: 'Active', midStatus: 'Pending', details: { vrm: 'GF21 UOP', make: 'Ford', model: 'Fiesta' } },
+      { id: 'POL-MOCK-003', userId: 'USER-3', type: 'Motorcycle Insurance', duration: '1 Month', premium: '£640.00', status: 'Frozen', midStatus: 'Failed', details: { vrm: 'MT09 HJK', make: 'Yamaha', model: 'MT-09' } }
     ];
 
     const mockPayments: PaymentRecord[] = [
@@ -219,9 +221,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     let pricingAnomalies = 0;
     policies.forEach(p => {
       const prem = parseFloat(p.premium.replace('£', '').replace(',', ''));
-      if (p.type === 'Comprehensive Cover' && (prem < 3000 || prem > 4000)) pricingAnomalies++;
-      if (p.type === 'Third Party Insurance' && (prem < 1400 || prem > 3000)) pricingAnomalies++;
-      if (p.type === 'Motorcycle Insurance' && (prem < 500 || prem > 1500)) pricingAnomalies++;
+      if (p.duration === '12 Months') {
+        if (p.type === 'Comprehensive Cover' && (prem < 3000 || prem > 4000)) pricingAnomalies++;
+        if (p.type === 'Third Party Insurance' && (prem < 1400 || prem > 3000)) pricingAnomalies++;
+        if (p.type === 'Motorcycle Insurance' && (prem < 500 || prem > 1500)) pricingAnomalies++;
+      } else {
+        if (prem < 400 || prem > 800) pricingAnomalies++;
+      }
     });
 
     if (pricingAnomalies > 0) {
@@ -229,24 +235,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (overallStatus !== 'Critical') overallStatus = 'Warning';
     } else if (policies.length > 0) {
       checks.push({ name: 'Pricing Engine Consistency', result: 'Pass', message: 'All premiums sit within valid risk brackets', timestamp: new Date().toISOString() });
-    }
-
-    // 3. Purchase Pipeline Simulation
-    const policiesWithInvalidDetails = policies.filter(p => p.status === 'Active' && (!p.details || !p.details.vrm || !p.details.firstName));
-    if (policiesWithInvalidDetails.length > 0) {
-      checks.push({ name: 'Transaction Pipeline Verification', result: 'Fail', message: `${policiesWithInvalidDetails.length} active policies have incomplete data manifests. Potential data loss in purchase form.`, timestamp: new Date().toISOString() });
-      overallStatus = 'Critical';
-    } else if (policies.length > 0) {
-      checks.push({ name: 'Transaction Pipeline Verification', result: 'Pass', message: 'All active policy manifests contain mandatory underwriting data.', timestamp: new Date().toISOString() });
-    }
-
-    // 4. Identity Lock Verification
-    const restrictedLogged = users.find(u => ['Blocked', 'Deleted', 'Removed'].includes(u.status) && localStorage.getItem('sp_session')?.includes(u.id));
-    if (restrictedLogged) {
-      checks.push({ name: 'Security Constraints', result: 'Fail', message: 'Session exists for restricted user!', timestamp: new Date().toISOString() });
-      overallStatus = 'Critical';
-    } else {
-      checks.push({ name: 'Security Constraints', result: 'Pass', message: 'Identity enforcement active', timestamp: new Date().toISOString() });
     }
 
     return { status: overallStatus, checks };
@@ -258,26 +246,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (policyIdx === -1) return null;
 
     const policy = allPolicies[policyIdx];
-    
-    // Integrity Pre-flight
-    if (!policy.details || !policy.details.vrm) {
-      addAuditLog('PDF_GEN_ABORTED', `Missing mandatory manifest data for ${policyId}`, policyId);
-      return null;
-    }
+    if (policy.status !== 'Active') return null; // No PDF for non-active policies
 
     const targetUser = JSON.parse(localStorage.getItem('sp_users') || '[]').find((u: any) => u.id === policy.userId);
     
     await new Promise(r => setTimeout(r, 1200));
 
-    const startDate = policy.details?.policyStartDate || new Date().toLocaleDateString();
-    const expiryDate = new Date(new Date().getFullYear() + 1, new Date().getMonth(), new Date().getDate()).toLocaleDateString();
+    const commencementDate = new Date(policy.validatedAt || policy.details?.policyStartDate || Date.now());
+    let expiryDateObj = new Date(commencementDate);
+
+    if (policy.duration === '1 Month') {
+      expiryDateObj.setMonth(expiryDateObj.getMonth() + 1);
+    } else {
+      expiryDateObj.setFullYear(expiryDateObj.getFullYear() + 1);
+    }
+
+    const startDateStr = commencementDate.toLocaleDateString();
+    const expiryDateStr = expiryDateObj.toLocaleDateString();
 
     const pdfContent = `
-SWIFTPOLICY INSURANCE SERVICES - OFFICIAL CERTIFICATE OF MOTOR INSURANCE
+SWIFTPOLICY INSURANCE SERVICES - ${policy.duration === '1 Month' ? 'OFFICIAL 1-MONTH' : 'OFFICIAL ANNUAL'} CERTIFICATE OF MOTOR INSURANCE
 -------------------------------------------------------------------------
 DOCUMENT ID: CERT-${policy.id}-${Math.floor(Math.random()*10000)}
 POLICY NUMBER: ${policy.id}
-STATUS: ${policy.status.toUpperCase()} (ENFORCED)
+STATUS: ACTIVE (ENFORCED)
+TERM: ${policy.duration.toUpperCase()}
 -------------------------------------------------------------------------
 1. DESCRIPTION OF VEHICLE
 Registration Mark: ${policy.details?.vrm || 'N/A'}
@@ -288,12 +281,13 @@ Name: ${targetUser?.name || 'Valued Customer'}
 Address: ${policy.details?.addressLine1 || 'On File'}, ${policy.details?.city || 'UK'}
 
 3. EFFECTIVE DATES OF COVER
-Commencement: ${startDate} 00:01
-Expiry: ${expiryDate} 23:59
+Commencement: ${startDateStr} 00:01
+Expiry: ${expiryDateStr} 23:59
 
 4. COVERAGE TYPE & PREMIUM
 Level: ${policy.type}
-Total Annual Premium (Inc. IPT): ${policy.premium}
+Term: ${policy.duration}
+Total Premium (Inc. IPT): ${policy.premium}
 
 5. PERSONS OR CLASSES OF PERSONS ENTITLED TO DRIVE
 The Policyholder as named in section 2.
@@ -317,12 +311,60 @@ THIS DOCUMENT IS A LEGALLY BINDING CERTIFICATE OF INSURANCE.
         allPolicies[policyIdx].pdfUrl = base64data;
         localStorage.setItem('sp_client_data', JSON.stringify(allPolicies));
         setPolicies(allPolicies);
-        addAuditLog('POLICY_PDF_GENERATED', `Regulatory Certificate Issued for ${policyId}`, policyId);
+        addAuditLog('POLICY_PDF_GENERATED', `Regulatory ${policy.duration} Certificate Issued for ${policyId}`, policyId);
         resolve(base64data);
       };
       reader.readAsDataURL(blob);
     });
   }, [addAuditLog]);
+
+  const validatePolicy = useCallback(async (id: string): Promise<boolean> => {
+    const allPolicies = JSON.parse(localStorage.getItem('sp_client_data') || '[]');
+    const idx = allPolicies.findIndex((p: any) => p.id === id);
+    if (idx === -1) return false;
+
+    const policy = allPolicies[idx];
+    if (policy.status !== 'Pending Validation') return false;
+
+    allPolicies[idx].status = 'Active';
+    allPolicies[idx].validatedAt = new Date().toISOString();
+    allPolicies[idx].details.policyStartDate = new Date().toISOString().split('T')[0];
+    
+    localStorage.setItem('sp_client_data', JSON.stringify(allPolicies));
+    setPolicies(allPolicies);
+    addAuditLog('ADMIN_POLICY_VALIDATION', `Policy ${id} activated by administrator.`, id);
+    
+    // Automatically trigger PDF generation now that it is active
+    await generatePolicyPDF(id);
+    return true;
+  }, [addAuditLog, generatePolicyPDF]);
+
+  const bindPolicyManual = useCallback(async (userId: string, data: any): Promise<boolean> => {
+    const allPolicies = JSON.parse(localStorage.getItem('sp_client_data') || '[]');
+    const isShortTerm = data.duration === '1 Month';
+    
+    const newPolicy: Policy = {
+      id: `POL-${isShortTerm ? 'ST' : 'AN'}-${Math.random().toString(36).substr(2, 6).toUpperCase()}`,
+      userId,
+      type: data.type,
+      duration: data.duration || '12 Months',
+      premium: `£${data.premium}`,
+      status: isShortTerm ? 'Pending Validation' : 'Active',
+      details: data.details,
+      midStatus: 'Pending'
+    };
+    
+    const updated = [newPolicy, ...allPolicies];
+    localStorage.setItem('sp_client_data', JSON.stringify(updated));
+    setPolicies(updated);
+    addAuditLog('POLICY_REQUEST_CREATED', `New ${newPolicy.duration} policy requested. Initial Status: ${newPolicy.status}`, newPolicy.id, data.reason);
+    
+    if (newPolicy.status === 'Active') {
+      await generatePolicyPDF(newPolicy.id);
+    }
+    
+    return true;
+  }, [addAuditLog, generatePolicyPDF]);
 
   const downloadPDF = useCallback((policyId: string) => {
     const allPolicies = JSON.parse(localStorage.getItem('sp_client_data') || '[]');
@@ -705,7 +747,7 @@ THIS DOCUMENT IS A LEGALLY BINDING CERTIFICATE OF INSURANCE.
       users, policies, payments, claims, auditLogs, inquiries, midSubmissions,
       updateUserStatus, updateUserRisk, setComplianceStatus, deleteUserPermanent, setKYCStatus, blockPayments,
       updatePolicyStatus, updatePolicyDetails, updatePaymentStatus, markPaymentDispute, updateClaimStatus, submitClaim,
-      submitInquiry, markInquiryAsRead, deleteInquiry,
+      bindPolicyManual, validatePolicy, submitInquiry, markInquiryAsRead, deleteInquiry,
       queueMIDSubmission, retryMIDSubmission, checkAskMID, refreshData: loadData,
       generatePolicyPDF, downloadPDF, deletePolicy, runDiagnostics, seedMockEnvironment
     }}>

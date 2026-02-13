@@ -10,7 +10,7 @@ export enum InsuranceType {
 
 export type InquiryType = 'General' | 'Quote' | 'Payment' | 'Claim' | 'Technical' | 'Feedback';
 export type UserStatus = 'Active' | 'Blocked' | 'Suspended' | 'Frozen' | 'Deleted' | 'Locked' | 'Removed';
-export type PolicyStatus = 'Active' | 'Frozen' | 'Cancelled' | 'Terminated' | 'Expired' | 'Renewed';
+export type PolicyStatus = 'Active' | 'Frozen' | 'Cancelled' | 'Terminated' | 'Expired' | 'Renewed' | 'Pending Validation';
 export type RiskLevel = 'Low' | 'Medium' | 'High';
 export type ClaimStatus = 'Under Review' | 'Approved' | 'Rejected' | 'Docs Requested';
 export type KYCStatus = 'VERIFIED' | 'PENDING' | 'FAILED' | 'NONE';
@@ -18,6 +18,7 @@ export type ComplianceStatus = 'GOOD' | 'REVIEW_REQUIRED' | 'FLAGGED';
 export type MIDStatus = 'Pending' | 'Success' | 'Failed' | 'Retrying';
 
 export type EnforcedInsuranceType = 'Comprehensive Cover' | 'Third Party Insurance' | 'Motorcycle Insurance';
+export type PolicyDuration = '1 Month' | '12 Months';
 
 export interface MIDSubmission {
   id: string;
@@ -78,6 +79,7 @@ export interface Policy {
   id: string;
   userId: string;
   type: string;
+  duration: PolicyDuration;
   premium: string;
   status: PolicyStatus;
   details: any;
@@ -85,6 +87,7 @@ export interface Policy {
   notes?: string;
   midStatus?: MIDStatus;
   pdfUrl?: string;
+  validatedAt?: string;
 }
 
 export interface Claim {
@@ -126,6 +129,7 @@ export interface PaymentRecord {
 export interface QuoteData {
   vrm: string;
   insurance_type: EnforcedInsuranceType | '';
+  duration: PolicyDuration;
   make: string;
   model: string;
   year: string;
