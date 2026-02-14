@@ -75,6 +75,23 @@ export interface AuditLog {
   reason?: string;
 }
 
+export interface VehicleDetails {
+  vrm: string;
+  make: string;
+  model: string;
+  year: string;
+  coverLevel: string;
+  licenceNumber: string;
+  address: string;
+  ncb: string;
+  excess: string;
+  // New Technical Fields
+  vin?: string;
+  engineSize?: string;
+  fuelType?: string;
+  color?: string;
+}
+
 export interface Policy {
   id: string;
   userId: string;
@@ -82,7 +99,7 @@ export interface Policy {
   duration: PolicyDuration;
   premium: string;
   status: PolicyStatus;
-  details: any;
+  details: VehicleDetails;
   riskFlag?: boolean;
   notes?: string;
   midStatus?: MIDStatus;
@@ -160,7 +177,6 @@ export interface QuoteData {
   licenceType: string;
   licenceHeldYears: string;
   licenceDate: string;
-  // Added licenceNumber to fix Property 'licenceNumber' does not exist on type 'QuoteData'
   licenceNumber: string;
   hasMedicalConditions: boolean;
   mainDriverHistory: {
@@ -198,4 +214,7 @@ export interface QuoteData {
   isAccurate: boolean;
   termsAccepted: boolean;
   generated_quote?: number;
+  // New Technical Fields for Lookup
+  vin?: string;
+  color?: string;
 }
