@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { 
@@ -10,7 +9,11 @@ import {
   Phone, 
   User,
   Database,
-  Search
+  Search,
+  Activity,
+  LayoutDashboard,
+  UserCircle,
+  Settings
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
@@ -18,14 +21,12 @@ const Header: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, logout } = useAuth();
+  const { user, adminUser, logout, logoutAdmin } = useAuth();
 
-  const isAdmin = user?.role === 'admin';
-
+  // Public navigation
   const navLinks = [
     { label: 'Home', path: '/', icon: <Home size={18} className="mr-1" /> },
-    { label: 'Insurance', path: '/#policies', hasDropdown: true },
-    { label: 'Manage your policy', path: '/customers' },
+    { label: 'Insurance', path: '/#policies' },
     { label: 'Make a claim', path: '/contact' },
     { label: 'Help', path: '/help' },
   ];
@@ -45,7 +46,6 @@ const Header: React.FC = () => {
       <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex h-16 items-center justify-between">
           
-          {/* Logo Section */}
           <div className="flex items-center gap-2">
             <Link 
               to="/" 
@@ -62,7 +62,6 @@ const Header: React.FC = () => {
             </Link>
           </div>
 
-          {/* Desktop Navigation - Center */}
           <nav className="hidden items-center gap-6 xl:gap-8 lg:flex">
             {navLinks.map((link) => (
               <Link
@@ -74,66 +73,75 @@ const Header: React.FC = () => {
               >
                 {link.icon}
                 {link.label}
-                {link.hasDropdown && <ChevronDown size={14} className="ml-1 opacity-70" />}
               </Link>
             ))}
-            {isAdmin && (
-              <div className="flex items-center gap-2">
-                <Link
-                  to="/admin/mid-status"
-                  className={`flex items-center gap-2 text-[13px] font-bold px-4 py-1.5 rounded-full bg-white/5 border border-white/10 hover:bg-white/10 transition-all ${
-                    isActive('/admin/mid-status') ? 'border-[#e91e8c] text-[#e91e8c]' : 'text-[#e91e8c]'
-                  }`}
-                >
-                  <Database size={14} /> MID
-                </Link>
-                <Link
-                  to="/admin/vin-logs"
-                  className={`flex items-center gap-2 text-[13px] font-bold px-4 py-1.5 rounded-full bg-white/5 border border-white/10 hover:bg-white/10 transition-all ${
-                    isActive('/admin/vin-logs') ? 'border-[#e91e8c] text-[#e91e8c]' : 'text-[#e91e8c]'
-                  }`}
-                >
-                  <Search size={14} /> VIN Intel
-                </Link>
-              </div>
-            )}
           </nav>
 
-          {/* Right Action Section */}
-          <div className="hidden items-center gap-6 lg:flex">
+          <div className="hidden items-center gap-4 lg:flex">
             <Link 
               to="/contact" 
-              className="flex items-center gap-2 text-[15px] font-semibold hover:text-[#ff4da6] transition-colors"
+              className="flex items-center gap-2 text-[15px] font-semibold hover:text-[#ff4da6] transition-colors pr-2"
             >
               <Phone size={18} />
-              Contact us
+              Contact
             </Link>
             
-            <Link
-              to={user ? "/customers" : "/auth"}
-              className="bg-[#e91e8c] hover:bg-[#c4167a] text-white px-6 py-2.5 rounded-xl text-[15px] font-bold transition-all shadow-lg shadow-pink-900/20 whitespace-nowrap"
-            >
-              My Account
-            </Link>
+            {/* Dual session handling */}
+            <div className="flex items-center gap-3">
+              {/* Show Admin link independently */}
+              {adminUser && (
+                <div className="flex items-center gap-2 pr-4 border-r border-white/10 mr-2">
+                  <Link
+                    to="/admin"
+                    className="flex items-center gap-2 text-[12px] font-black uppercase tracking-widest text-[#e91e8c] hover:text-white transition-all"
+                  >
+                    <Settings size={14} /> Admin Console
+                  </Link>
+                  <button onClick={logoutAdmin} className="text-white/20 hover:text-white"><X size={14}/></button>
+                </div>
+              )}
 
-            {user && (
-              <button 
-                onClick={logout} 
-                className="text-[11px] font-black uppercase tracking-widest text-white/30 hover:text-white transition-colors"
-              >
-                Logout
-              </button>
-            )}
+              {/* Show User link or Login buttons */}
+              {user ? (
+                <div className="flex items-center gap-4">
+                  <Link
+                    to="/portal"
+                    className="bg-[#e91e8c] hover:bg-[#c4167a] text-white px-6 py-2.5 rounded-xl text-[15px] font-bold transition-all shadow-lg shadow-pink-900/20 whitespace-nowrap"
+                  >
+                    Dashboard
+                  </Link>
+                  <button 
+                    onClick={logout} 
+                    className="text-[11px] font-black uppercase tracking-widest text-white/30 hover:text-white transition-colors"
+                  >
+                    Sign Out
+                  </button>
+                </div>
+              ) : (
+                <div className="flex items-center gap-3">
+                  <Link
+                    to="/auth?mode=signup"
+                    className="bg-white/5 hover:bg-white/10 text-white px-6 py-2.5 rounded-xl text-[15px] font-bold transition-all border border-white/10"
+                  >
+                    Sign Up
+                  </Link>
+                  <Link
+                    to="/auth"
+                    className="bg-[#e91e8c] hover:bg-[#c4167a] text-white px-6 py-2.5 rounded-xl text-[15px] font-bold transition-all shadow-lg shadow-pink-900/20 whitespace-nowrap"
+                  >
+                    Login
+                  </Link>
+                </div>
+              )}
+            </div>
           </div>
 
-          {/* Mobile menu button */}
           <button className="lg:hidden text-white p-2" onClick={() => setIsOpen(!isOpen)}>
             {isOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
           </button>
         </div>
       </div>
 
-      {/* Mobile Navigation */}
       {isOpen && (
         <div className="lg:hidden border-t border-white/5 bg-[#2d1f2d] animate-in slide-in-from-top-2 duration-200">
           <div className="px-4 py-6 space-y-4">
@@ -148,46 +156,50 @@ const Header: React.FC = () => {
                 {link.label}
               </Link>
             ))}
-            {isAdmin && (
-              <div className="space-y-2">
-                <Link
-                  to="/admin/mid-status"
-                  onClick={() => setIsOpen(false)}
-                  className="flex items-center gap-3 text-lg font-bold text-[#e91e8c] bg-white/5 p-3 rounded-xl"
-                >
-                  <Database size={20} /> MID Operations
-                </Link>
-                <Link
-                  to="/admin/vin-logs"
-                  onClick={() => setIsOpen(false)}
-                  className="flex items-center gap-3 text-lg font-bold text-[#e91e8c] bg-white/5 p-3 rounded-xl"
-                >
-                  <Search size={20} /> VIN Intelligence
-                </Link>
-              </div>
-            )}
             <div className="pt-4 border-t border-white/10 space-y-4">
-              <Link 
-                to="/contact" 
-                onClick={() => setIsOpen(false)} 
-                className="flex items-center gap-2 text-white font-semibold"
-              >
-                <Phone size={20} /> Contact us
-              </Link>
-              <Link 
-                to={user ? "/customers" : "/auth"} 
-                onClick={() => setIsOpen(false)} 
-                className="w-full bg-[#e91e8c] text-white px-4 py-4 rounded-xl text-center font-bold block shadow-lg"
-              >
-                My Account
-              </Link>
-              {user && (
-                <button 
-                  onClick={() => { logout(); setIsOpen(false); }} 
-                  className="w-full text-center text-white/40 font-bold uppercase tracking-widest text-xs"
+              {adminUser && (
+                <Link
+                  to="/admin"
+                  onClick={() => setIsOpen(false)}
+                  className="flex items-center gap-3 text-lg font-semibold text-[#e91e8c]"
                 >
-                  Sign Out
-                </button>
+                  <Settings size={20} /> Admin Console
+                </Link>
+              )}
+              
+              {!user ? (
+                <div className="grid grid-cols-2 gap-3">
+                  <Link 
+                    to="/auth?mode=signup" 
+                    onClick={() => setIsOpen(false)} 
+                    className="bg-white/10 text-white px-4 py-4 rounded-xl text-center font-bold block"
+                  >
+                    Sign Up
+                  </Link>
+                  <Link 
+                    to="/auth" 
+                    onClick={() => setIsOpen(false)} 
+                    className="bg-[#e91e8c] text-white px-4 py-4 rounded-xl text-center font-bold block shadow-lg"
+                  >
+                    Login
+                  </Link>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <Link 
+                    to="/portal" 
+                    onClick={() => setIsOpen(false)} 
+                    className="w-full bg-[#e91e8c] text-white px-4 py-4 rounded-xl text-center font-bold block shadow-lg"
+                  >
+                    Dashboard
+                  </Link>
+                  <button 
+                    onClick={() => { logout(); setIsOpen(false); }} 
+                    className="w-full text-center text-white/40 font-bold uppercase tracking-widest text-xs"
+                  >
+                    Sign Out
+                  </button>
+                </div>
               )}
             </div>
           </div>

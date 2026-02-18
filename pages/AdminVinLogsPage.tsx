@@ -3,7 +3,7 @@ import React, { useMemo } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { 
   Database, Clock, CheckCircle, AlertCircle, Trash2, 
-  Search, Shield, ArrowLeft, RefreshCcw, Activity
+  Search, Shield, ArrowLeft, RefreshCcw, Activity, ExternalLink
 } from 'lucide-react';
 import { Link, Navigate } from 'react-router-dom';
 
@@ -15,7 +15,7 @@ const AdminVinLogsPage: React.FC = () => {
     return {
       total: logs.length,
       cacheHits: logs.filter(l => l.source === 'Cache').length,
-      apiHits: logs.filter(l => l.source === 'API' || l.source === 'Intelligence').length,
+      apiHits: logs.filter(l => l.source === 'API' || l.source === 'Intelligence' || l.source === 'Authoritative').length,
       failures: logs.filter(l => !l.success).length
     };
   }, [vehicleLogs]);
@@ -75,6 +75,7 @@ const AdminVinLogsPage: React.FC = () => {
                   <th className="px-8 py-5">Reference</th>
                   <th className="px-8 py-5">Specification</th>
                   <th className="px-8 py-5">Source</th>
+                  <th className="px-8 py-5">Grounding</th>
                   <th className="px-8 py-5">Outcome</th>
                   <th className="px-8 py-5">Timestamp</th>
                 </tr>
@@ -91,10 +92,31 @@ const AdminVinLogsPage: React.FC = () => {
                     </td>
                     <td className="px-8 py-6">
                       <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest ${
-                        log.source === 'Cache' ? 'bg-green-50 text-green-600' : 'bg-blue-50 text-blue-600'
+                        log.source === 'Cache' ? 'bg-green-50 text-green-600' : 
+                        log.source === 'Authoritative' ? 'bg-purple-50 text-purple-600' : 'bg-blue-50 text-blue-600'
                       }`}>
                         {log.source}
                       </span>
+                    </td>
+                    <td className="px-8 py-6">
+                      {log.metadata?.sources ? (
+                        <div className="flex flex-wrap gap-2">
+                          {log.metadata.sources.map((url: string, idx: number) => (
+                            <a 
+                              key={idx} 
+                              href={url} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="p-1.5 bg-gray-50 rounded-lg text-gray-400 hover:text-[#e91e8c] transition-colors"
+                              title={url}
+                            >
+                              <ExternalLink size={12} />
+                            </a>
+                          ))}
+                        </div>
+                      ) : (
+                        <span className="text-[10px] text-gray-300 font-medium uppercase tracking-widest">Local Registry</span>
+                      )}
                     </td>
                     <td className="px-8 py-6">
                       {log.success ? (

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, memo } from 'react';
 import { Link } from 'react-router-dom';
 import { 
@@ -217,8 +216,9 @@ const HomePage: React.FC = () => {
       </section>
 
       <div className="py-16 flex justify-center border-t border-gray-100 bg-[#faf8fa]">
+        {/* Administrator Portal link updated to restrict access via a query parameter */}
         <Link 
-          to={user?.role === 'admin' ? "/customers" : "/auth"} 
+          to={user?.role === 'admin' ? "/admin" : "/auth?admin=true"} 
           className="group flex items-center gap-2 px-6 py-2.5 bg-gray-100/50 border border-gray-200/50 rounded-full text-[10px] font-black uppercase tracking-[0.3em] text-gray-400 hover:text-white hover:bg-[#e91e8c] hover:border-[#e91e8c] hover:shadow-xl hover:shadow-pink-900/10 transition-all duration-300 active:scale-95"
           aria-label="System Administration"
         >

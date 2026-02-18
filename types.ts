@@ -1,5 +1,4 @@
-
-import React;
+import React from 'react';
 
 export enum InsuranceType {
   CAR = 'car',
@@ -9,16 +8,107 @@ export enum InsuranceType {
 }
 
 export type InquiryType = 'General' | 'Quote' | 'Payment' | 'Claim' | 'Technical' | 'Feedback';
-export type UserStatus = 'Active' | 'Blocked' | 'Suspended' | 'Frozen' | 'Deleted' | 'Locked' | 'Removed';
-export type PolicyStatus = 'Active' | 'Frozen' | 'Cancelled' | 'Terminated' | 'Expired' | 'Renewed' | 'Pending Validation' | 'Validated' | 'Blocked' | 'Removed';
-export type RiskLevel = 'Low' | 'Medium' | 'High';
-export type ClaimStatus = 'Under Review' | 'Approved' | 'Rejected' | 'Docs Requested';
-export type KYCStatus = 'VERIFIED' | 'PENDING' | 'FAILED' | 'NONE';
+export type UserStatus = 'Active' | 'Blocked' | 'Suspended' | 'Frozen' | 'Deleted' | 'Locked' | 'Removed' | 'Pending Validation' | 'Validated' | 'Inactive' | 'Pending';
+export type PolicyStatus = 'Active' | 'Frozen' | 'Cancelled' | 'Terminated' | 'Expired' | 'Renewed' | 'Pending Validation' | 'Validated' | 'Blocked' | 'Removed' | 'Lapsed' | 'Pending Approval' | 'Approved' | 'Suspended' | 'Deleted';
+export type RiskLevel = 'Low' | 'Medium' | 'High' | 'Critical';
+export type ClaimStatus = 'Under Review' | 'Approved' | 'Rejected' | 'Docs Requested' | 'Settled' | 'Closed';
+export type KYCStatus = 'VERIFIED' | 'PENDING' | 'REJECTED' | 'FAILED' | 'NONE';
 export type ComplianceStatus = 'GOOD' | 'REVIEW_REQUIRED' | 'FLAGGED';
 export type MIDStatus = 'Pending' | 'Success' | 'Failed' | 'Retrying';
 
 export type EnforcedInsuranceType = 'Comprehensive Cover' | 'Third Party Insurance' | 'Motorcycle Insurance';
 export type PolicyDuration = '1 Month' | '12 Months';
+export type PolicyType = 'ANNUAL' | 'ONE_MONTH';
+
+export interface Conviction {
+  code: string;
+  date: string;
+  points: number;
+  banMonths: number;
+}
+
+export interface PastClaim {
+  date: string;
+  type: 'Fault' | 'Non-Fault' | 'Theft' | 'Windscreen';
+  value: string;
+}
+
+export interface AdditionalDriver {
+  id: string;
+  firstName: string;
+  lastName: string;
+  dob: string;
+  relation: string;
+  occupation: string;
+  licenceType: string;
+}
+
+export interface PaymentRecord {
+  id: string;
+  policyId: string;
+  clientId: string;
+  amount: string;
+  status: 'Paid' | 'Success' | 'Pending' | 'Failed' | 'Refunded';
+  timestamp: string;
+  method: string;
+  payment_type: string;
+  transaction_ref: string;
+}
+
+export interface ClaimRecord {
+  id: string;
+  policyId: string;
+  clientId: string;
+  claimReference: string;
+  dateOfIncident: string;
+  status: ClaimStatus;
+  amount: number;
+  description: string;
+  notes: string;
+  createdAt: string;
+}
+
+export interface SupportTicket {
+  id: string;
+  clientId: string;
+  subject: string;
+  type: InquiryType;
+  status: 'Open' | 'In Progress' | 'Resolved' | 'Closed';
+  priority: 'Low' | 'Medium' | 'High' | 'Critical';
+  assignedAgent?: string;
+  lastMessage: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface RiskConfig {
+  iptRate: number;
+  adminFee: number;
+  postcodeMultipliers: Record<string, number>;
+  vehicleCategoryMultipliers: Record<string, number>;
+  ncbDiscountMax: number;
+  minPremium: number;
+}
+
+export interface AdminUser {
+  id: string;
+  email: string;
+  name: string;
+  role: 'Super Admin' | 'Operations' | 'Claims' | 'Finance';
+  isActive: boolean;
+  lastLogin: string;
+}
+
+export interface AdminActivityLog {
+  id: string;
+  admin_id: string;
+  policy_id?: string;
+  user_id?: string;
+  action_performed: string;
+  previous_status?: PolicyStatus | string;
+  new_status?: PolicyStatus | string;
+  timestamp: string;
+}
 
 export interface VehicleLookupLog {
   id: string;
@@ -26,7 +116,7 @@ export interface VehicleLookupLog {
   make: string;
   model: string;
   year: string;
-  source: 'API' | 'Cache' | 'Intelligence' | 'Manual';
+  source: 'API' | 'Cache' | 'Intelligence' | 'Manual' | 'Authoritative';
   timestamp: string;
   success: boolean;
   metadata?: any;
@@ -43,30 +133,28 @@ export interface MIDSubmission {
   retryCount: number;
 }
 
-export interface ContactMessage {
-  id: string;
-  name: string;
-  email: string;
-  phone?: string;
-  subject: string;
-  type: InquiryType;
-  message: string;
-  status: 'Unread' | 'Read' | 'Replied';
-  timestamp: string;
-  consent: boolean;
-}
-
 export interface User {
   id: string;
+  client_code: string;
+  first_name: string;
+  last_name: string;
   name: string;
   email: string;
   phone?: string;
+  dob?: string;
+  address?: string;
+  city?: string;
+  state?: string;
   role: 'customer' | 'admin';
   status: UserStatus;
+  is_profile_enabled?: boolean;
+  account_state?: 'active' | 'inactive' | 'pending' | 'suspended';
   createdAt: string;
+  updated_at?: string;
   lastLogin?: string;
   lastIp?: string;
   riskLevel?: RiskLevel;
+  risk_factor?: 'low' | 'medium' | 'high' | 'critical';
   risk_flag?: boolean;
   isSuspicious?: boolean;
   internalNotes?: string;
@@ -85,6 +173,7 @@ export interface AuditLog {
   details: string;
   ipAddress: string;
   reason?: string;
+  entityType?: 'USER' | 'POLICY' | 'CLAIM' | 'PAYMENT' | 'SYSTEM' | 'ADMIN';
 }
 
 export interface PremiumBreakdown {
@@ -95,7 +184,6 @@ export interface PremiumBreakdown {
   ipt: number;
   adminFee: number;
   total: number;
-  // Financial Transparency Fields
   firstMonthCharge?: number;
   fullAnnualPremium?: number;
   remainingBalance?: number;
@@ -109,92 +197,67 @@ export interface VehicleDetails {
   coverLevel: string;
   licenceNumber: string;
   address: string;
+  addressLine1?: string;
+  postcode?: string;
   ncb: string;
   excess: string;
-  // Technical Specifications
-  vin?: string;
-  engineSize?: string;
-  fuelType?: string;
-  color?: string;
-  vehicleType?: string;
   vehicleValue?: string;
-  // Metadata for Policy Display
   firstName?: string;
   lastName?: string;
-  dob?: string;
   email?: string;
   phone?: string;
-  yearsExperience?: string;
-  issueDate?: string;
   startDate?: string;
   expiryDate?: string;
   paymentRef?: string;
-  paymentFrequency?: 'monthly' | 'annually';
   breakdown?: PremiumBreakdown;
+  usageType?: string;
+  engineCC?: string;
+  engine_size?: string;
+  cardLastFour?: string;
+  cardholderName?: string;
+  cardExpiry?: string;
+  addons?: {
+    breakdown: boolean;
+    legal: boolean;
+    courtesyCar: boolean;
+    windscreen: boolean;
+    protectedNcb: boolean;
+    keyCover?: boolean;
+  };
 }
 
 export interface Policy {
   id: string;
+  displayId?: string;
   userId: string;
   type: string;
+  policy_type: PolicyType;
   duration: PolicyDuration;
   premium: string;
   status: PolicyStatus;
+  isActive: boolean;
   details: VehicleDetails;
   riskFlag?: boolean;
   notes?: string;
-  midStatus?: MIDStatus;
-  pdfUrl?: string;
-  validatedAt?: string;
-}
-
-export interface Claim {
-  id: string;
-  policyId: string;
-  userId: string;
-  date: string;
-  type: string;
-  description: string;
-  status: ClaimStatus;
-  internalNotes?: string;
-  timestamp: string;
-  fraud_flag?: boolean;
-}
-
-export interface PaymentRecord {
-  id: string;
-  policyId: string;
-  userId: string;
-  date: string;
-  description: string;
-  amount: string;
-  type: 'Full Payment' | 'Monthly Installment';
-  status: 'Paid in Full' | 'Payment Successful' | 'Pending' | 'Direct Republic Set Up' | 'Disputed' | 'Refunded' | 'Overdue';
-  method: string;
-  reference: string;
-  bankTransactionId?: string;
-  dispute?: boolean;
-  policyDetails: {
-    vrm: string;
-    make: string;
-    model: string;
-    coverLevel: string;
-    insurer: string;
-    renewalDate: string;
-  };
+  paymentStatus?: 'Paid' | 'Unpaid' | 'Partial' | 'Overdue';
+  renewalDate?: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface QuoteData {
   vrm: string;
+  vin?: string;
   insurance_type: EnforcedInsuranceType | '';
+  policy_type: PolicyType;
   duration: PolicyDuration;
   make: string;
   model: string;
   year: string;
-  fuelType: string;
+  fuel_type: string;
   transmission: string;
-  bodyType: string;
-  engineSize: string;
+  body_type: string;
+  engine_size: string;
   seats: string;
   isImported: boolean;
   annualMileage: string;
@@ -219,17 +282,20 @@ export interface QuoteData {
   licenceHeldYears: string;
   licenceDate: string;
   licenceNumber: string;
+  points: number;
+  hasConvictions: boolean;
+  convictions: Conviction[];
   hasMedicalConditions: boolean;
   mainDriverHistory: {
     hasConvictions: boolean;
-    convictions: any[];
+    convictions: Conviction[];
     hasClaims: boolean;
-    claims: any[];
+    claims: PastClaim[];
   };
   ncbYears: string;
   isCurrentlyInsured: boolean;
   hasPreviousCancellations: boolean;
-  additionalDrivers: any[];
+  additionalDrivers: AdditionalDriver[];
   postcode: string;
   addressLine1: string;
   city: string;
@@ -238,15 +304,20 @@ export interface QuoteData {
   coverLevel: string;
   policyStartDate: string;
   voluntaryExcess: string;
+  vehicleValue: string;
+  color?: string;
+  doors?: string;
+  engineCC?: string;
   addons: {
     breakdown: boolean;
     legal: boolean;
     courtesyCar: boolean;
     windscreen: boolean;
     protectedNcb: boolean;
+    keyCover: boolean;
   };
   paymentFrequency: 'monthly' | 'annually';
-  payerType: 'individual' | 'company';
+  payerType: string;
   email: string;
   phone: string;
   contactTime: string;
@@ -254,8 +325,6 @@ export interface QuoteData {
   dataProcessingConsent: boolean;
   isAccurate: boolean;
   termsAccepted: boolean;
-  generated_quote?: number;
-  vin?: string;
-  color?: string;
-  vehicleValue?: string;
+  goodsCarried?: string;
+  isSignWritten?: boolean;
 }
