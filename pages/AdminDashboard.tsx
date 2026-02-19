@@ -32,20 +32,20 @@ const PolicyDetailModal = ({ policy, user, onClose }: { policy: Policy, user: Us
   return (
     <div className="fixed inset-0 z-[250] flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-[#2d1f2d]/90 backdrop-blur-md" onClick={onClose} />
-      <div className="relative w-full max-w-5xl bg-white h-[90vh] rounded-[48px] shadow-2xl overflow-hidden flex flex-col animate-in zoom-in-95 duration-300">
-        <div className="p-8 border-b border-gray-100 flex justify-between items-center bg-white">
+      <div className="relative w-full max-w-5xl bg-white h-[90vh] md:rounded-[48px] shadow-2xl overflow-hidden flex flex-col animate-in zoom-in-95 duration-300">
+        <div className="p-4 md:p-8 border-b border-gray-100 flex justify-between items-center bg-white">
           <div className="flex items-center gap-4">
-             <div className="w-12 h-12 bg-[#e91e8c]/10 rounded-2xl flex items-center justify-center text-[#e91e8c]"><Shield size={24}/></div>
-             <div><h3 className="font-black text-[#2d1f2d] uppercase tracking-tighter">Policy Administration View</h3><p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">ID: {policy.id}</p></div>
+             <div className="w-10 h-10 md:w-12 md:h-12 bg-[#e91e8c]/10 rounded-2xl flex items-center justify-center text-[#e91e8c]"><Shield size={24}/></div>
+             <div><h3 className="font-black text-[#2d1f2d] uppercase tracking-tighter text-sm md:text-base">Policy Administration View</h3><p className="text-[8px] md:text-[10px] text-gray-400 font-bold uppercase tracking-widest">ID: {policy.id}</p></div>
           </div>
           <button onClick={onClose} className="p-3 bg-gray-50 rounded-xl text-gray-400 hover:bg-gray-100 transition-all"><X size={20}/></button>
         </div>
         
-        <div className="flex-1 overflow-y-auto p-12 bg-gray-50">
-           <div className="w-full max-w-4xl mx-auto bg-white p-12 rounded-[40px] shadow-sm border border-gray-100 text-[#2d1f2d] font-sans">
+        <div className="flex-1 overflow-y-auto p-4 md:p-12 bg-gray-50">
+           <div className="w-full max-w-4xl mx-auto bg-white p-6 md:p-12 rounded-[32px] md:rounded-[40px] shadow-sm border border-gray-100 text-[#2d1f2d] font-sans overflow-x-hidden">
               
-              <div className="flex justify-between items-start mb-12 border-b-2 border-gray-100 pb-10">
-                 <div>
+              <div className="flex flex-col sm:flex-row justify-between items-start mb-12 border-b-2 border-gray-100 pb-10 gap-8">
+                 <div className="w-full sm:w-auto">
                     <div className="flex items-center gap-3 mb-6">
                       <div className="bg-[#e91e8c] p-1.5 rounded-lg"><Shield className="text-white" size={24}/></div>
                       <span className="text-2xl font-black font-outfit tracking-tighter">SwiftPolicy</span>
@@ -56,7 +56,7 @@ const PolicyDetailModal = ({ policy, user, onClose }: { policy: Policy, user: Us
                        <p className="text-[#e91e8c]">FCA Firm Reference: 481413</p>
                     </div>
                  </div>
-                 <div className="text-right">
+                 <div className="text-left sm:text-right w-full sm:w-auto">
                     <h1 className="text-xl font-black uppercase text-[#2d1f2d] tracking-widest mb-1">Administrative Record</h1>
                     <div className="space-y-1 mt-6">
                        <div className="flex flex-col">
@@ -71,7 +71,7 @@ const PolicyDetailModal = ({ policy, user, onClose }: { policy: Policy, user: Us
                  </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-12 mb-12">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12 mb-12">
                  <div className="space-y-6">
                     <div className="border-l-4 border-[#e91e8c] pl-6 py-1">
                        <h3 className="text-[10px] font-black uppercase text-gray-400 tracking-widest mb-4">Policyholder Details</h3>
@@ -109,12 +109,12 @@ const PolicyDetailModal = ({ policy, user, onClose }: { policy: Policy, user: Us
                  </div>
 
                  <div className="space-y-6">
-                    <div className="bg-gray-50 p-8 rounded-[32px] border border-gray-100">
+                    <div className="bg-gray-50 p-6 md:p-8 rounded-[32px] border border-gray-100">
                        <h3 className="text-[10px] font-black uppercase text-gray-400 tracking-widest mb-6 flex items-center gap-2"><Car size={14}/> Vehicle Specification</h3>
-                       <div className="grid grid-cols-2 gap-6 relative z-10">
-                          <div className="col-span-2">
+                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 relative z-10">
+                          <div className="sm:col-span-2">
                              <p className="text-[8px] font-black text-gray-300 uppercase mb-1">Registration</p>
-                             <p className="text-2xl font-black font-mono tracking-widest border-2 border-gray-100 bg-white inline-block px-4 py-1 rounded-xl text-[#2d1f2d]">{policy.details.vrm}</p>
+                             <p className="text-xl md:text-2xl font-black font-mono tracking-widest border-2 border-gray-100 bg-white inline-block px-4 py-1 rounded-xl text-[#2d1f2d]">{policy.details.vrm}</p>
                           </div>
                           <div>
                              <p className="text-[8px] font-black text-gray-300 uppercase mb-1">Make / Model</p>
@@ -129,7 +129,7 @@ const PolicyDetailModal = ({ policy, user, onClose }: { policy: Policy, user: Us
 
                     <div className="bg-[#e91e8c]/5 p-6 rounded-[24px] border border-[#e91e8c]/10">
                        <h3 className="text-[10px] font-black uppercase text-[#e91e8c] tracking-widest mb-3">Optional Endorsements</h3>
-                       <div className="grid grid-cols-2 gap-2">
+                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                           {policy.details.addons?.breakdown && <div className="flex items-center gap-2 text-[9px] font-bold text-gray-600"><CheckCircle2 size={10} className="text-green-500"/> Breakdown Assist</div>}
                           {policy.details.addons?.legal && <div className="flex items-center gap-2 text-[9px] font-bold text-gray-600"><CheckCircle2 size={10} className="text-green-500"/> Motor Legal</div>}
                           {policy.details.addons?.protectedNcb && <div className="flex items-center gap-2 text-[9px] font-bold text-gray-600"><CheckCircle2 size={10} className="text-green-500"/> NCD Protection</div>}
@@ -138,14 +138,14 @@ const PolicyDetailModal = ({ policy, user, onClose }: { policy: Policy, user: Us
                  </div>
               </div>
 
-              <div className="bg-[#2d1f2d] p-10 rounded-[48px] text-white relative overflow-hidden">
-                 <div className="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-8">
-                    <div className="space-y-4">
+              <div className="bg-[#2d1f2d] p-6 md:p-10 rounded-[32px] md:rounded-[48px] text-white relative overflow-hidden">
+                 <div className="relative z-10 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-8">
+                    <div className="space-y-4 w-full lg:w-auto">
                        <div className="flex items-center gap-3">
                           <div className="w-10 h-10 bg-white/10 rounded-xl flex items-center justify-center text-[#e91e8c] shadow-lg"><BadgeCheck size={24}/></div>
-                          <h3 className="text-xl font-bold font-outfit uppercase tracking-widest">Financial Summary</h3>
+                          <h3 className="text-lg md:text-xl font-bold font-outfit uppercase tracking-widest">Financial Summary</h3>
                        </div>
-                       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-2">
+                       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 pt-2">
                           <div>
                              <p className="text-[8px] font-black text-white/30 uppercase tracking-widest">Billing Method</p>
                              <p className="text-xs font-bold text-white/60">
@@ -156,7 +156,7 @@ const PolicyDetailModal = ({ policy, user, onClose }: { policy: Policy, user: Us
                              <p className="text-[8px] font-black text-white/30 uppercase tracking-widest">Payment Source</p>
                              <p className="text-xs font-bold text-white/60">Card ending in {policy.details.cardLastFour || 'XXXX'}</p>
                              {policy.details.cardExpiry && (
-                                <p className="text-[9px] font-bold text-white/40 mt-1">Expiry Date: {policy.details.cardExpiry}</p>
+                                <p className="text-[10px] font-bold text-white/40 mt-1">Expiry Date: {policy.details.cardExpiry}</p>
                              )}
                              {isPaid && (
                                 <p className="text-[9px] font-black text-green-400 uppercase tracking-widest mt-1.5">Payment Successful</p>
@@ -170,9 +170,9 @@ const PolicyDetailModal = ({ policy, user, onClose }: { policy: Policy, user: Us
                           )}
                        </div>
                     </div>
-                    <div className="text-right border-l border-white/10 pl-8 h-full">
+                    <div className="text-left lg:text-right border-t lg:border-t-0 lg:border-l border-white/10 pt-8 lg:pt-0 lg:pl-8 w-full lg:w-auto">
                        <p className="text-[10px] font-black text-white/40 uppercase tracking-widest mb-1">TOTAL POLICY COST ({isOneMonth ? '30 DAYS' : 'ANNUAL'})</p>
-                       <p className="text-5xl font-black font-outfit tracking-tighter text-white">£{totalCost.toFixed(2)}</p>
+                       <p className="text-4xl md:text-5xl font-black font-outfit tracking-tighter text-white">£{totalCost.toFixed(2)}</p>
                     </div>
                  </div>
               </div>

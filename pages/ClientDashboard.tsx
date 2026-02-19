@@ -29,9 +29,24 @@ const PolicyDocumentModal = ({ policy, user, onClose }: { policy: Policy, user: 
       const imgData = canvas.toDataURL('image/png');
       const pdf = new jsPDF('p', 'mm', 'a4');
       const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = pdf.internal.pageSize.getHeight();
       const imgHeight = (canvas.height * pdfWidth) / canvas.width;
       
-      pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, imgHeight, undefined, 'FAST');
+      let heightLeft = imgHeight;
+      let position = 0;
+
+      // Add the first page
+      pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, imgHeight, undefined, 'FAST');
+      heightLeft -= pdfHeight;
+
+      // Add subsequent pages if content is longer than one A4 page
+      while (heightLeft > 0) {
+        position = heightLeft - imgHeight;
+        pdf.addPage();
+        pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, imgHeight, undefined, 'FAST');
+        heightLeft -= pdfHeight;
+      }
+
       pdf.save(`SwiftPolicy_Schedule_${policy.displayId || policy.id}.pdf`);
     } catch (e) {
       console.error('PDF Generation Error:', e);
@@ -50,27 +65,27 @@ const PolicyDocumentModal = ({ policy, user, onClose }: { policy: Policy, user: 
   return (
     <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-[#2d1f2d]/80 backdrop-blur-md" onClick={onClose} />
-      <div className="relative w-full max-w-5xl bg-white h-full rounded-[40px] shadow-2xl overflow-hidden flex flex-col animate-in zoom-in-95 duration-300">
-        <div className="p-8 border-b border-gray-100 flex justify-between items-center bg-white shrink-0">
-          <div className="flex items-center gap-4">
-             <div className="w-12 h-12 bg-[#e91e8c]/10 rounded-2xl flex items-center justify-center text-[#e91e8c]"><FileText size={24}/></div>
-             <div><h3 className="font-black text-[#2d1f2d] uppercase tracking-tighter">Policy Schedule</h3><p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Regulatory Reference: {policy.displayId || policy.id}</p></div>
+      <div className="relative w-full max-w-5xl bg-white h-full md:rounded-[40px] shadow-2xl overflow-hidden flex flex-col animate-in zoom-in-95 duration-300">
+        <div className="p-4 md:p-8 border-b border-gray-100 flex flex-col sm:flex-row justify-between items-center bg-white shrink-0 gap-4">
+          <div className="flex items-center gap-4 w-full sm:w-auto">
+             <div className="w-10 h-10 md:w-12 md:h-12 bg-[#e91e8c]/10 rounded-2xl flex items-center justify-center text-[#e91e8c]"><FileText size={20}/></div>
+             <div><h3 className="font-black text-[#2d1f2d] uppercase tracking-tighter text-sm md:text-base">Policy Schedule</h3><p className="text-[8px] md:text-[10px] text-gray-400 font-bold uppercase tracking-widest">Ref: {policy.displayId || policy.id}</p></div>
           </div>
-          <div className="flex gap-3">
-             <button onClick={handleDownloadPDF} disabled={isDownloading} className="px-8 py-3 bg-[#2d1f2d] text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-black transition-all flex items-center gap-2">
+          <div className="flex gap-3 w-full sm:w-auto">
+             <button onClick={handleDownloadPDF} disabled={isDownloading} className="flex-1 sm:flex-none px-4 md:px-8 py-3 bg-[#2d1f2d] text-white rounded-xl text-[9px] md:text-[10px] font-black uppercase tracking-widest hover:bg-black transition-all flex items-center justify-center gap-2">
                 {isDownloading ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />} Download PDF
              </button>
              <button onClick={onClose} className="p-3 bg-gray-50 rounded-xl text-gray-400 hover:bg-gray-100 transition-all"><X size={20}/></button>
           </div>
         </div>
         
-        <div className="flex-1 overflow-y-auto p-12 bg-gray-100 flex justify-center">
+        <div className="flex-1 overflow-y-auto p-4 md:p-12 bg-gray-100 flex justify-center">
            {/* PROFESSIONAL POLICY DOCUMENT LAYOUT */}
-           <div ref={documentRef} className="w-full max-w-[210mm] bg-white p-12 md:p-16 shadow-xl min-h-[297mm] text-[#2d1f2d] font-sans relative overflow-hidden">
+           <div ref={documentRef} className="w-full max-w-[210mm] bg-white p-6 md:p-16 shadow-xl min-h-[297mm] text-[#2d1f2d] font-sans relative overflow-x-hidden">
               
               {/* HEADER SECTION */}
-              <div className="flex justify-between items-start mb-12 border-b-2 border-gray-100 pb-10">
-                 <div>
+              <div className="flex flex-col sm:flex-row justify-between items-start mb-12 border-b-2 border-gray-100 pb-10 gap-8">
+                 <div className="w-full sm:w-auto">
                     <div className="flex items-center gap-3 mb-6">
                       <div className="bg-[#e91e8c] p-1.5 rounded-lg"><Shield className="text-white" size={24}/></div>
                       <span className="text-2xl font-black font-outfit tracking-tighter">SwiftPolicy</span>
@@ -83,7 +98,7 @@ const PolicyDocumentModal = ({ policy, user, onClose }: { policy: Policy, user: 
                        <p className="text-[#e91e8c] font-black">FCA Firm Reference: 481413</p>
                     </div>
                  </div>
-                 <div className="text-right">
+                 <div className="text-left sm:text-right w-full sm:w-auto">
                     <h1 className="text-xl font-black uppercase text-[#2d1f2d] tracking-widest mb-1">Schedule of Insurance</h1>
                     <div className="space-y-1 mt-6">
                        <div className="flex flex-col">
@@ -99,7 +114,7 @@ const PolicyDocumentModal = ({ policy, user, onClose }: { policy: Policy, user: 
               </div>
 
               {/* GRID SECTIONS */}
-              <div className="grid grid-cols-2 gap-12 mb-12">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12 mb-12">
                  {/* Policyholder Details */}
                  <div className="space-y-6">
                     <div className="border-l-4 border-[#e91e8c] pl-6 py-1">
@@ -140,12 +155,12 @@ const PolicyDocumentModal = ({ policy, user, onClose }: { policy: Policy, user: 
 
                  {/* Vehicle Details */}
                  <div className="space-y-6">
-                    <div className="bg-gray-50 p-8 rounded-[32px] border border-gray-100 relative overflow-hidden">
+                    <div className="bg-gray-50 p-6 md:p-8 rounded-[32px] border border-gray-100 relative overflow-hidden">
                        <h3 className="text-[10px] font-black uppercase text-gray-400 tracking-widest mb-6 flex items-center gap-2"><Car size={14}/> Vehicle Specification</h3>
-                       <div className="grid grid-cols-2 gap-6 relative z-10">
-                          <div className="col-span-2">
+                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 relative z-10">
+                          <div className="sm:col-span-2">
                              <p className="text-[8px] font-black text-gray-300 uppercase mb-1">Registration</p>
-                             <p className="text-2xl font-black font-mono tracking-widest border-2 border-gray-100 bg-white inline-block px-4 py-1 rounded-xl text-[#2d1f2d]">{policy.details.vrm}</p>
+                             <p className="text-xl md:text-2xl font-black font-mono tracking-widest border-2 border-gray-100 bg-white inline-block px-4 py-1 rounded-xl text-[#2d1f2d]">{policy.details.vrm}</p>
                           </div>
                           <div>
                              <p className="text-[8px] font-black text-gray-300 uppercase mb-1">Make</p>
@@ -168,7 +183,7 @@ const PolicyDocumentModal = ({ policy, user, onClose }: { policy: Policy, user: 
 
                     <div className="bg-[#e91e8c]/5 p-6 rounded-[24px] border border-[#e91e8c]/10">
                        <h3 className="text-[10px] font-black uppercase text-[#e91e8c] tracking-widest mb-3">Optional Add-ons</h3>
-                       <div className="grid grid-cols-2 gap-2">
+                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                           {policy.details.addons?.breakdown && <div className="flex items-center gap-2 text-[9px] font-bold text-gray-600"><CheckCircle2 size={10} className="text-green-500"/> Breakdown Assist</div>}
                           {policy.details.addons?.legal && <div className="flex items-center gap-2 text-[9px] font-bold text-gray-600"><CheckCircle2 size={10} className="text-green-500"/> Motor Legal Exp.</div>}
                           {policy.details.addons?.protectedNcb && <div className="flex items-center gap-2 text-[9px] font-bold text-gray-600"><CheckCircle2 size={10} className="text-green-500"/> NCD Protection</div>}
@@ -179,14 +194,14 @@ const PolicyDocumentModal = ({ policy, user, onClose }: { policy: Policy, user: 
               </div>
 
               {/* PAYMENT SUMMARY SECTION */}
-              <div className="bg-[#2d1f2d] p-10 rounded-[48px] text-white relative overflow-hidden mb-12">
-                 <div className="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-8">
-                    <div className="space-y-4">
+              <div className="bg-[#2d1f2d] p-6 md:p-10 rounded-[32px] md:rounded-[48px] text-white relative overflow-hidden mb-12">
+                 <div className="relative z-10 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-8">
+                    <div className="space-y-4 w-full lg:w-auto">
                        <div className="flex items-center gap-3">
                           <div className="w-10 h-10 bg-white/10 rounded-xl flex items-center justify-center text-[#e91e8c] shadow-lg"><BadgeCheck size={24}/></div>
-                          <h3 className="text-xl font-black font-outfit uppercase tracking-widest">Premium Settlement</h3>
+                          <h3 className="text-lg md:text-xl font-black font-outfit uppercase tracking-widest">Premium Settlement</h3>
                        </div>
-                       <div className="grid grid-cols-2 gap-x-12 gap-y-2 pt-2">
+                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-12 gap-y-4 pt-2">
                           <div>
                              <p className="text-[8px] font-black text-white/30 uppercase tracking-widest">Payment Source</p>
                              <p className="text-xs font-bold text-white/60">Card ending in {policy.details.cardLastFour || 'XXXX'}</p>
@@ -211,10 +226,10 @@ const PolicyDocumentModal = ({ policy, user, onClose }: { policy: Policy, user: 
                           )}
                        </div>
                     </div>
-                    <div className="text-right border-l border-white/10 pl-8 h-full">
+                    <div className="text-left lg:text-right border-t lg:border-t-0 lg:border-l border-white/10 pt-8 lg:pt-0 lg:pl-8 w-full lg:w-auto">
                        <p className="text-[10px] font-black text-white/40 uppercase tracking-widest mb-1">TOTAL POLICY COST ({isOneMonth ? '30 DAYS' : 'ANNUAL'})</p>
-                       <p className="text-5xl font-black font-outfit tracking-tighter text-white">£{totalCost.toFixed(2)}</p>
-                       <p className="text-[8px] text-white/30 font-bold uppercase tracking-widest mt-2 flex items-center justify-end gap-1"><Shield size={8}/> Prices inclusive of IPT & Fees</p>
+                       <p className="text-4xl md:text-5xl font-black font-outfit tracking-tighter text-white">£{totalCost.toFixed(2)}</p>
+                       <p className="text-[8px] text-white/30 font-bold uppercase tracking-widest mt-2 flex items-center justify-start lg:justify-end gap-1"><Shield size={8}/> Prices inclusive of IPT & Fees</p>
                     </div>
                  </div>
                  <div className="absolute top-0 right-0 w-64 h-64 bg-[#e91e8c]/10 rounded-full blur-[100px] pointer-events-none" />
