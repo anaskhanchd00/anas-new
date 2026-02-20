@@ -150,8 +150,9 @@ const PolicyDetailModal = ({ policy, user, onClose }: { policy: Policy, user: Us
                                  policy.details.addressLine1 || policy.details.address,
                                  policy.details.addressLine2,
                                  policy.details.city,
-                                 policy.details.county,
-                                 policy.details.postcode
+                                 (policy.details as any).state || policy.details.county,
+                                 policy.details.postcode,
+                                 (policy.details as any).country
                                ].filter(Boolean).join(', ')}
                              </p>
                              <p className="flex items-center gap-2"><Mail size={12}/> {user?.email}</p>
@@ -242,7 +243,7 @@ const PolicyDetailModal = ({ policy, user, onClose }: { policy: Policy, user: Us
                                 <p className="text-[10px] font-bold text-white/40 mt-1">Expiry Date: {policy.details.cardExpiry}</p>
                              )}
                              {isPaid && (
-                                <p className="text-[9px] font-black text-green-400 uppercase tracking-widest mt-1.5">Payment Successful</p>
+                                <p className="text-[9px] font-black text-green-400 uppercase tracking-widest mt-1.5">Payment Settled</p>
                              )}
                           </div>
                           {isMonthly && (
@@ -458,6 +459,7 @@ export const AdminDashboard: React.FC<{ initialTab?: string }> = ({ initialTab }
     if (action === 'POLICY_REMOVE') {
        if (window.confirm("Are you sure you want to delete this policy? This action will deactivate the policy and remove it from active records.")) {
          removePolicy(id, "Administrative soft-deletion.");
+         refreshData();
        }
        return;
     }
@@ -644,7 +646,7 @@ export const AdminDashboard: React.FC<{ initialTab?: string }> = ({ initialTab }
            {activeTab === 'policy-ledger' && (
               <div className="space-y-12 animate-in fade-in duration-500">
                  <div className="flex justify-between items-center">
-                    <h2 className="text-5xl font-black font-outfit uppercase tracking-tighter">Policy Management Ledger</h2>
+                    <h2 className="text-5xl font-black font-outfit uppercase tracking-tighter text-[#2d1f2d]">Policy Management Ledger</h2>
                     <div className="flex gap-4">
                        <select 
                          className="bg-white border border-gray-100 rounded-xl px-4 py-2 text-xs font-bold outline-none"
@@ -675,43 +677,43 @@ export const AdminDashboard: React.FC<{ initialTab?: string }> = ({ initialTab }
                     <table className="w-full text-left">
                        <thead className="bg-[#2d1f2d] text-[9px] font-black uppercase text-white/40 tracking-[0.2em]">
                           <tr>
-                             <th className="px-8 py-6">Policy ID</th>
-                             <th className="px-8 py-6">Type</th>
-                             <th className="px-8 py-6">Customer Name</th>
-                             <th className="px-8 py-6">Vehicle Registration</th>
-                             <th className="px-8 py-6">Premium</th>
-                             <th className="px-8 py-6">Status</th>
-                             <th className="px-8 py-6">Start Date</th>
-                             <th className="px-8 py-6">End Date</th>
-                             <th className="px-8 py-6 text-center">Lifecycle Actions</th>
+                             <th className="px-8 py-7 border-b border-white/5">Policy ID</th>
+                             <th className="px-8 py-7 border-b border-white/5">Type</th>
+                             <th className="px-8 py-7 border-b border-white/5">Customer Name</th>
+                             <th className="px-8 py-7 border-b border-white/5">Vehicle</th>
+                             <th className="px-8 py-7 border-b border-white/5">Premium</th>
+                             <th className="px-8 py-7 border-b border-white/5">Status</th>
+                             <th className="px-8 py-7 border-b border-white/5">Start Date</th>
+                             <th className="px-8 py-7 border-b border-white/5">End Date</th>
+                             <th className="px-8 py-7 border-b border-white/5 text-center">Actions</th>
                           </tr>
                        </thead>
                        <tbody className="divide-y divide-gray-50">
                           {filteredPolicies.map(p => {
                             const client = users.find(u => u.id === p.userId);
                             return (
-                              <tr key={p.id} className="hover:bg-gray-50/50 transition-all group">
+                              <tr key={p.id} className="hover:bg-pink-50/30 even:bg-gray-50/40 transition-all group">
                                  <td className="px-8 py-6">
-                                    <p className="font-mono text-xs font-black tracking-tighter text-[#e91e8c]">{p.displayId || p.id}</p>
+                                    <p className="font-mono text-xs font-black tracking-tighter text-[#e91e8c] group-hover:scale-105 transition-transform origin-left">{p.displayId || p.id}</p>
                                     <p className="text-[8px] text-gray-300 uppercase mt-1">Created: {new Date(p.createdAt).toLocaleDateString('en-GB')}</p>
                                  </td>
                                  <td className="px-8 py-6">
-                                    <span className={`px-2 py-1 rounded text-[8px] font-black uppercase tracking-widest ${p.policy_type === 'ONE_MONTH' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'}`}>
+                                    <span className={`px-2.5 py-1 rounded-lg text-[8px] font-black uppercase tracking-widest shadow-sm ${p.policy_type === 'ONE_MONTH' ? 'bg-purple-100 text-purple-700 border border-purple-200' : 'bg-blue-100 text-blue-700 border border-blue-200'}`}>
                                       {p.policy_type === 'ONE_MONTH' ? '1 Month' : 'Annual'}
                                     </span>
                                  </td>
                                  <td className="px-8 py-6">
-                                    <p className="text-sm font-bold text-[#2d1f2d]">{client?.name || 'Unlinked'}</p>
+                                    <p className="text-sm font-black text-[#2d1f2d] tracking-tight">{client?.name || 'Unlinked'}</p>
                                     <p className="text-[10px] text-gray-400">{client?.email}</p>
                                  </td>
                                  <td className="px-8 py-6">
-                                    <span className="px-3 py-1 bg-yellow-50 border border-yellow-200 rounded-lg font-mono font-bold text-xs">{p.details.vrm}</span>
+                                    <span className="px-3 py-1.5 bg-yellow-50 border border-yellow-200 rounded-xl font-mono font-black text-xs text-yellow-700 shadow-sm">{p.details.vrm}</span>
                                  </td>
                                  <td className="px-8 py-6">
-                                    <p className="text-sm font-black text-[#2d1f2d]">£{parseFloat(p.premium).toLocaleString()}</p>
+                                    <p className="text-sm font-black text-[#2d1f2d] bg-gray-50 px-3 py-1 rounded-lg border border-gray-100 inline-block">£{parseFloat(p.premium).toLocaleString()}</p>
                                  </td>
                                  <td className="px-8 py-6">
-                                    <span className={`px-3 py-1 rounded-full text-[8px] font-black uppercase tracking-widest ${
+                                    <span className={`px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest shadow-sm border ${
                                       p.status === 'Active' ? 'bg-green-100 text-green-700' :
                                       p.status === 'Cancelled' ? 'bg-red-50 text-red-600' :
                                       p.status === 'Pending Approval' ? 'bg-orange-100 text-orange-700' :
@@ -719,33 +721,33 @@ export const AdminDashboard: React.FC<{ initialTab?: string }> = ({ initialTab }
                                     }`}>{p.status}</span>
                                  </td>
                                  <td className="px-8 py-6">
-                                    <p className="text-xs font-bold text-gray-500">{new Date(p.details.startDate || p.createdAt).toLocaleDateString('en-GB')}</p>
+                                    <p className="text-xs font-black text-gray-500">{new Date(p.details.startDate || p.createdAt).toLocaleDateString('en-GB')}</p>
                                  </td>
                                  <td className="px-8 py-6">
-                                    <p className="text-xs font-bold text-gray-500">{new Date(p.details.expiryDate || p.renewalDate || '').toLocaleDateString('en-GB')}</p>
+                                    <p className="text-xs font-black text-gray-500">{new Date(p.details.expiryDate || p.renewalDate || '').toLocaleDateString('en-GB')}</p>
                                  </td>
                                  <td className="px-8 py-6 text-center">
-                                    <div className="flex justify-center gap-2">
-                                       <button onClick={() => setViewingPolicy(p)} className="p-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-600 hover:text-white transition-all" title="View Full Details"><Eye size={16}/></button>
+                                    <div className="flex justify-center items-center gap-2">
+                                       <button onClick={() => setViewingPolicy(p)} className="w-9 h-9 flex items-center justify-center bg-blue-50 text-blue-600 rounded-xl hover:bg-blue-600 hover:text-white hover:shadow-lg hover:shadow-blue-200 transition-all" title="View Full Details"><Eye size={16}/></button>
                                        
                                        {/* Note Action */}
-                                       <button onClick={() => handleAdminAction('POLICY_NOTE', p.id)} className="p-2 bg-yellow-50 text-yellow-600 rounded-lg hover:bg-yellow-600 hover:text-white transition-all" title="Add Internal Note"><StickyNote size={16}/></button>
+                                       <button onClick={() => handleAdminAction('POLICY_NOTE', p.id)} className="w-9 h-9 flex items-center justify-center bg-yellow-50 text-yellow-600 rounded-xl hover:bg-yellow-600 hover:text-white hover:shadow-lg hover:shadow-yellow-200 transition-all" title="Add Internal Note"><StickyNote size={16}/></button>
 
                                        {/* Status Lifecycle Actions */}
                                        {p.status === 'Pending Approval' && (
-                                         <button onClick={() => handleAdminAction('POLICY_STATUS', p.id, 'Approved')} className="p-2 bg-green-50 text-green-600 rounded-lg hover:bg-green-600 hover:text-white transition-all" title="Approve"><CheckSquare size={16}/></button>
+                                         <button onClick={() => handleAdminAction('POLICY_STATUS', p.id, 'Approved')} className="w-9 h-9 flex items-center justify-center bg-green-50 text-green-600 rounded-xl hover:bg-green-600 hover:text-white hover:shadow-lg hover:shadow-green-200 transition-all" title="Approve"><CheckSquare size={16}/></button>
                                        )}
                                        {p.status === 'Active' && (
                                          <>
-                                           <button onClick={() => handleAdminAction('POLICY_STATUS', p.id, 'Cancelled')} className="p-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-600 hover:text-white transition-all" title="Cancel Policy"><XCircle size={16}/></button>
-                                           <button onClick={() => handleAdminAction('POLICY_STATUS', p.id, 'Suspended')} className="p-2 bg-orange-50 text-orange-600 rounded-lg hover:bg-orange-600 hover:text-white transition-all" title="Suspend Policy"><UserMinus size={16}/></button>
+                                           <button onClick={() => handleAdminAction('POLICY_STATUS', p.id, 'Cancelled')} className="w-9 h-9 flex items-center justify-center bg-red-50 text-red-600 rounded-xl hover:bg-red-600 hover:text-white hover:shadow-lg hover:shadow-red-200 transition-all" title="Cancel Policy"><XCircle size={16}/></button>
+                                           <button onClick={() => handleAdminAction('POLICY_STATUS', p.id, 'Suspended')} className="w-9 h-9 flex items-center justify-center bg-orange-50 text-orange-600 rounded-xl hover:bg-orange-600 hover:text-white hover:shadow-lg hover:shadow-orange-200 transition-all" title="Suspend Policy"><UserMinus size={16}/></button>
                                          </>
                                        )}
                                        {(p.status === 'Cancelled' || p.status === 'Suspended') && (
-                                         <button onClick={() => handleAdminAction('POLICY_STATUS', p.id, 'Active')} className="p-2 bg-green-50 text-green-600 rounded-lg hover:bg-green-600 hover:text-white transition-all" title="Reactivate Policy"><Power size={16}/></button>
+                                         <button onClick={() => handleAdminAction('POLICY_STATUS', p.id, 'Active')} className="w-9 h-9 flex items-center justify-center bg-green-50 text-green-600 rounded-xl hover:bg-green-600 hover:text-white hover:shadow-lg hover:shadow-green-200 transition-all" title="Reactivate Policy"><Power size={16}/></button>
                                        )}
                                        {p.status !== 'Deleted' && (
-                                         <button onClick={() => handleAdminAction('POLICY_REMOVE', p.id)} className="p-2 bg-gray-100 text-gray-400 rounded-lg hover:bg-red-600 hover:text-white transition-all" title="Delete Policy"><Trash2 size={16}/></button>
+                                         <button onClick={() => handleAdminAction('POLICY_REMOVE', p.id)} className="w-9 h-9 flex items-center justify-center bg-gray-100 text-gray-400 rounded-xl hover:bg-red-600 hover:text-white hover:shadow-lg hover:shadow-red-200 transition-all" title="Delete Policy"><Trash2 size={16}/></button>
                                        )}
                                     </div>
                                  </td>
@@ -765,7 +767,7 @@ export const AdminDashboard: React.FC<{ initialTab?: string }> = ({ initialTab }
                     <table className="w-full text-left">
                        <thead className="bg-[#2d1f2d] text-[9px] font-black uppercase text-white/40 tracking-[0.2em]">
                           <tr>
-                             <th className="px-10 py-8">Administrator</th>
+                             <th className="px-10 py-8 border-b border-white/5">Administrator</th>
                              <th className="px-10 py-8">Action Entity</th>
                              <th className="px-10 py-8">Action</th>
                              <th className="px-10 py-8">Transition</th>

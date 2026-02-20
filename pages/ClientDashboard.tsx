@@ -161,8 +161,9 @@ const PolicyDocumentModal = ({ policy, user, onClose }: { policy: Policy, user: 
                                  policy.details.addressLine1 || policy.details.address,
                                  policy.details.addressLine2,
                                  policy.details.city,
-                                 policy.details.county,
-                                 policy.details.postcode
+                                 (policy.details as any).state || policy.details.county,
+                                 policy.details.postcode,
+                                 (policy.details as any).country
                                ].filter(Boolean).join(', ')}
                              </p>
                              <p className="flex items-center gap-2"><Mail size={12}/> {user.email}</p>
@@ -259,7 +260,7 @@ const PolicyDocumentModal = ({ policy, user, onClose }: { policy: Policy, user: 
                                <p className="text-[10px] font-bold text-white/40 mt-0.5">Expiry Date: {policy.details.cardExpiry}</p>
                              )}
                              {isPaid && (
-                               <p className="text-[9px] font-black text-green-400 uppercase tracking-widest mt-1">Payment Successful</p>
+                               <p className="text-[9px] font-black text-green-400 uppercase tracking-widest mt-1">Payment Settled</p>
                              )}
                           </div>
                           <div>
@@ -407,7 +408,7 @@ const ClientDashboard: React.FC = () => {
                                    {isPaid && p.details.cardLastFour && (
                                      <div className="space-y-0.5">
                                        <p className="text-[9px] font-bold text-[#e91e8c]/60 uppercase tracking-widest">
-                                         Card ending in {p.details.cardLastFour} {p.details.cardExpiry && `• Exp: ${p.details.cardExpiry}`} • <span className="text-green-600">Payment Successful</span>
+                                         Card ending in {p.details.cardLastFour} {p.details.cardExpiry && `• Exp: ${p.details.cardExpiry}`} • <span className="text-green-600">Payment Settled</span>
                                        </p>
                                      </div>
                                    )}
