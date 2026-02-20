@@ -19,12 +19,33 @@ const PolicyDocumentModal = ({ policy, user, onClose }: { policy: Policy, user: 
     if (!documentRef.current) return;
     setIsDownloading(true);
     try {
-      // Optimizing for professional PDF quality
+      // Ensure the element is visible and has a white background during capture
       const canvas = await html2canvas(documentRef.current, { 
         scale: 2,
         useCORS: true,
         logging: false,
-        backgroundColor: '#ffffff'
+        backgroundColor: '#ffffff',
+        onclone: (clonedDoc) => {
+          const el = clonedDoc.getElementById('policy-document-container');
+          if (el) {
+            el.style.display = 'block';
+            el.style.visibility = 'visible';
+            el.style.backgroundColor = '#ffffff';
+            // Force all text to be black for better contrast in PDF
+            const textElements = el.querySelectorAll('*');
+            textElements.forEach((node: any) => {
+              if (node.style) {
+                // Only override if it's not already a specific color we want to keep (like pink)
+                const computedColor = window.getComputedStyle(node).color;
+                if (computedColor === 'rgb(255, 255, 255)' || computedColor === 'rgba(255, 255, 255, 1)') {
+                   // Keep white text on dark backgrounds (like the payment summary)
+                } else {
+                   // node.style.color = '#000000'; // Optional: force black text
+                }
+              }
+            });
+          }
+        }
       });
       const imgData = canvas.toDataURL('image/png');
       const pdf = new jsPDF('p', 'mm', 'a4');
@@ -41,13 +62,13 @@ const PolicyDocumentModal = ({ policy, user, onClose }: { policy: Policy, user: 
 
       // Add subsequent pages if content is longer than one A4 page
       while (heightLeft > 0) {
-        position = heightLeft - imgHeight;
+        position = heightLeft - pdfHeight; // Fix: shift by pdfHeight, not imgHeight
         pdf.addPage();
         pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, imgHeight, undefined, 'FAST');
         heightLeft -= pdfHeight;
       }
 
-      pdf.save(`SwiftPolicy_Schedule_${policy.displayId || policy.id}.pdf`);
+      pdf.save(`SwiftPolicy_Certificate_${policy.displayId || policy.id}.pdf`);
     } catch (e) {
       console.error('PDF Generation Error:', e);
     } finally {
@@ -81,10 +102,22 @@ const PolicyDocumentModal = ({ policy, user, onClose }: { policy: Policy, user: 
         
         <div className="flex-1 overflow-y-auto p-4 md:p-12 bg-gray-100 flex justify-center">
            {/* PROFESSIONAL POLICY DOCUMENT LAYOUT */}
-           <div ref={documentRef} className="w-full max-w-[210mm] bg-white p-6 md:p-16 shadow-xl min-h-[297mm] text-[#2d1f2d] font-sans relative overflow-x-hidden">
-              
-              {/* HEADER SECTION */}
-              <div className="flex flex-col sm:flex-row justify-between items-start mb-12 border-b-2 border-gray-100 pb-10 gap-8">
+           <div ref={documentRef} id="policy-document-container" className="w-full max-w-[210mm] bg-white p-6 md:p-16 shadow-xl text-[#2d1f2d] font-sans relative">
+              <style dangerouslySetInnerHTML={{ __html: `
+                @media print {
+                  .policy-section { page-break-inside: auto; }
+                  .policy-section h3 { page-break-after: avoid; }
+                  .page-break { page-break-after: always; }
+                }
+                #policy-document {
+                  padding-top: 20mm;
+                  padding-bottom: 20mm;
+                  background-color: #ffffff;
+                }
+              `}} />
+              <div id="policy-document">
+                {/* HEADER SECTION */}
+                <div className="flex flex-col sm:flex-row justify-between items-start mb-12 border-b-2 border-gray-100 pb-10 gap-8 policy-section">
                  <div className="w-full sm:w-auto">
                     <div className="flex items-center gap-3 mb-6">
                       <div className="bg-[#e91e8c] p-1.5 rounded-lg"><Shield className="text-white" size={24}/></div>
@@ -99,7 +132,7 @@ const PolicyDocumentModal = ({ policy, user, onClose }: { policy: Policy, user: 
                     </div>
                  </div>
                  <div className="text-left sm:text-right w-full sm:w-auto">
-                    <h1 className="text-xl font-black uppercase text-[#2d1f2d] tracking-widest mb-1">Schedule of Insurance</h1>
+                    <h1 className="text-xl font-black uppercase text-[#2d1f2d] tracking-widest mb-1">CERTIFICATE OF MOTOR INSURANCE</h1>
                     <div className="space-y-1 mt-6">
                        <div className="flex flex-col">
                           <span className="text-[8px] font-black text-gray-300 uppercase">Policy Reference Number</span>
@@ -114,7 +147,7 @@ const PolicyDocumentModal = ({ policy, user, onClose }: { policy: Policy, user: 
               </div>
 
               {/* GRID SECTIONS */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12 mb-12">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12 mb-12 policy-section">
                  {/* Policyholder Details */}
                  <div className="space-y-6">
                     <div className="border-l-4 border-[#e91e8c] pl-6 py-1">
@@ -122,7 +155,16 @@ const PolicyDocumentModal = ({ policy, user, onClose }: { policy: Policy, user: 
                        <div className="space-y-3">
                           <p className="text-lg font-black tracking-tight leading-none">{user.name}</p>
                           <div className="text-xs font-bold text-gray-500 space-y-1">
-                             <p className="flex items-center gap-2"><MapPin size={12}/> {policy.details.addressLine1 || policy.details.address}, {policy.details.postcode}</p>
+                             <p className="flex items-center gap-2">
+                               <MapPin size={12}/> 
+                               {[
+                                 policy.details.addressLine1 || policy.details.address,
+                                 policy.details.addressLine2,
+                                 policy.details.city,
+                                 policy.details.county,
+                                 policy.details.postcode
+                               ].filter(Boolean).join(', ')}
+                             </p>
                              <p className="flex items-center gap-2"><Mail size={12}/> {user.email}</p>
                              <p className="flex items-center gap-2"><Phone size={12}/> {user.phone || '07XXX XXXXXX'}</p>
                           </div>
@@ -178,6 +220,14 @@ const PolicyDocumentModal = ({ policy, user, onClose }: { policy: Policy, user: 
                              <p className="text-[8px] font-black text-gray-300 uppercase mb-1">Fuel Type</p>
                              <p className="text-xs font-bold">{(policy.details as any).fuel_type || 'Petrol'}</p>
                           </div>
+                          <div>
+                             <p className="text-[8px] font-black text-gray-300 uppercase mb-1">Engine Size</p>
+                             <p className="text-xs font-bold">{policy.details.engine_size || policy.details.engineCC || 'N/A'}</p>
+                          </div>
+                          <div>
+                             <p className="text-[8px] font-black text-gray-300 uppercase mb-1">Colour</p>
+                             <p className="text-xs font-bold">{policy.details.color || policy.details.colour || 'N/A'}</p>
+                          </div>
                        </div>
                     </div>
 
@@ -194,7 +244,7 @@ const PolicyDocumentModal = ({ policy, user, onClose }: { policy: Policy, user: 
               </div>
 
               {/* PAYMENT SUMMARY SECTION */}
-              <div className="bg-[#2d1f2d] p-6 md:p-10 rounded-[32px] md:rounded-[48px] text-white relative overflow-hidden mb-12">
+              <div className="bg-[#2d1f2d] p-6 md:p-10 rounded-[32px] md:rounded-[48px] text-white relative overflow-hidden mb-12 policy-section">
                  <div className="relative z-10 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-8">
                     <div className="space-y-4 w-full lg:w-auto">
                        <div className="flex items-center gap-3">
@@ -236,13 +286,20 @@ const PolicyDocumentModal = ({ policy, user, onClose }: { policy: Policy, user: 
               </div>
 
               {/* FOOTER SECTION */}
-              <div className="border-t border-gray-100 pt-10 flex flex-col items-center text-center gap-6">
+              <div className="border-t border-gray-100 pt-10 flex flex-col items-center text-center gap-6 policy-section">
+                 <div className="flex flex-col items-center gap-4 mb-4">
+                    <div className="w-32 h-12 border-b border-gray-300 flex items-end justify-center pb-1">
+                       <span className="font-serif italic text-gray-400 text-sm">SwiftPolicy Digital</span>
+                    </div>
+                    <p className="text-[8px] font-black uppercase tracking-widest text-gray-300">Authorised Signatory</p>
+                 </div>
                  <div className="text-[9px] text-gray-400 leading-relaxed max-w-2xl space-y-2">
                     <p className="font-bold">SwiftPolicy Insurance Services is a brand of Autoline Direct Insurance Consultants Ltd.</p>
                     <p>Autoline Direct Insurance Consultants Ltd is authorised and regulated by the Financial Conduct Authority (FCA), firm reference number 481413. Registered Office: Crown House, 27 Old Gloucester Street, London WC1N 3AX.</p>
-                    <p>This document is evidence of your insurance contract. Please keep it in a safe place. You can manage your policy 24/7 at www.swiftpolicy.co.uk.</p>
+                    <p>This document is evidence of your insurance contract and serves as your Certificate of Motor Insurance. Please keep it in a safe place. You can manage your policy 24/7 at www.swiftpolicy.co.uk.</p>
                  </div>
               </div>
+            </div>
            </div>
         </div>
       </div>
@@ -284,7 +341,7 @@ const ClientDashboard: React.FC = () => {
   }
 
   // User-scoped data isolation - Essential for regulatory privacy
-  const myPolicies = policies.filter(p => p.userId === user.id);
+  const myPolicies = policies.filter(p => p.userId === user.id && p.status !== 'Deleted');
 
   const getCountdown = (expiryDate: string) => {
     const end = new Date(expiryDate).getTime();

@@ -324,19 +324,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const removePolicy = (id: string, reason: string) => {
     const currentPolicies: Policy[] = JSON.parse(localStorage.getItem('sp_policies') || '[]');
-    const updated = currentPolicies.filter(p => p.id !== id);
+    const now = new Date().toISOString();
+    
+    // Soft delete: update status to 'Deleted' instead of filtering out
+    const updated = currentPolicies.map(p => p.id === id ? { 
+      ...p, 
+      status: 'Deleted' as PolicyStatus, 
+      updatedAt: now 
+    } : p);
+    
     localStorage.setItem('sp_policies', JSON.stringify(updated));
     setPolicies(updated);
     
     const audit: AuditLog[] = JSON.parse(localStorage.getItem('sp_audit_logs') || '[]');
     const log: AuditLog = {
       id: `AUDIT-${Date.now()}`,
-      timestamp: new Date().toISOString(),
+      timestamp: now,
       userId: adminUser?.id || 'SYSTEM',
       userEmail: adminUser?.email || 'SYSTEM',
       targetId: id,
       action: 'POLICY_REMOVE',
-      details: `Policy removed. Reason: ${reason}`,
+      details: `Policy soft-deleted. Reason: ${reason}`,
       ipAddress: '127.0.0.1',
       entityType: 'POLICY'
     };

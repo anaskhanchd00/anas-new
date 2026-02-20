@@ -16,12 +16,62 @@ import {
 } from 'lucide-react';
 import { Navigate, Link } from 'react-router-dom';
 import { User, Policy, AuditLog, ClaimRecord, PaymentRecord, UserStatus, KYCStatus, RiskLevel, PolicyStatus, ClaimStatus, SupportTicket, RiskConfig, AdminActivityLog } from '../types';
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
 
 /**
  * Functional Operational Modules
  */
 
 const PolicyDetailModal = ({ policy, user, onClose }: { policy: Policy, user: User | undefined, onClose: () => void }) => {
+  const [isDownloading, setIsDownloading] = useState(false);
+  const documentRef = useRef<HTMLDivElement>(null);
+
+  const handleDownloadPDF = async () => {
+    if (!documentRef.current) return;
+    setIsDownloading(true);
+    try {
+      const canvas = await html2canvas(documentRef.current, { 
+        scale: 2,
+        useCORS: true,
+        logging: false,
+        backgroundColor: '#ffffff',
+        onclone: (clonedDoc) => {
+          const el = clonedDoc.getElementById('admin-policy-document-container');
+          if (el) {
+            el.style.display = 'block';
+            el.style.visibility = 'visible';
+            el.style.backgroundColor = '#ffffff';
+          }
+        }
+      });
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = pdf.internal.pageSize.getHeight();
+      const imgHeight = (canvas.height * pdfWidth) / canvas.width;
+      
+      let heightLeft = imgHeight;
+      let position = 0;
+
+      pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, imgHeight, undefined, 'FAST');
+      heightLeft -= pdfHeight;
+
+      while (heightLeft > 0) {
+        position = heightLeft - pdfHeight;
+        pdf.addPage();
+        pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, imgHeight, undefined, 'FAST');
+        heightLeft -= pdfHeight;
+      }
+
+      pdf.save(`SwiftPolicy_Admin_Record_${policy.displayId || policy.id}.pdf`);
+    } catch (e) {
+      console.error('PDF Generation Error:', e);
+    } finally {
+      setIsDownloading(false);
+    }
+  };
+
   const bd = policy.details.breakdown;
   const totalCost = bd?.total || parseFloat(policy.premium);
   const isMonthly = (policy.details as any).paymentFrequency === 'monthly';
@@ -38,13 +88,29 @@ const PolicyDetailModal = ({ policy, user, onClose }: { policy: Policy, user: Us
              <div className="w-10 h-10 md:w-12 md:h-12 bg-[#e91e8c]/10 rounded-2xl flex items-center justify-center text-[#e91e8c]"><Shield size={24}/></div>
              <div><h3 className="font-black text-[#2d1f2d] uppercase tracking-tighter text-sm md:text-base">Policy Administration View</h3><p className="text-[8px] md:text-[10px] text-gray-400 font-bold uppercase tracking-widest">ID: {policy.id}</p></div>
           </div>
-          <button onClick={onClose} className="p-3 bg-gray-50 rounded-xl text-gray-400 hover:bg-gray-100 transition-all"><X size={20}/></button>
+          <div className="flex gap-3">
+             <button onClick={handleDownloadPDF} disabled={isDownloading} className="px-6 py-3 bg-[#2d1f2d] text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-black transition-all flex items-center gap-2">
+                {isDownloading ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />} Export PDF
+             </button>
+             <button onClick={onClose} className="p-3 bg-gray-50 rounded-xl text-gray-400 hover:bg-gray-100 transition-all"><X size={20}/></button>
+          </div>
         </div>
         
         <div className="flex-1 overflow-y-auto p-4 md:p-12 bg-gray-50">
-           <div className="w-full max-w-4xl mx-auto bg-white p-6 md:p-12 rounded-[32px] md:rounded-[40px] shadow-sm border border-gray-100 text-[#2d1f2d] font-sans overflow-x-hidden">
-              
-              <div className="flex flex-col sm:flex-row justify-between items-start mb-12 border-b-2 border-gray-100 pb-10 gap-8">
+           <div ref={documentRef} id="admin-policy-document-container" className="w-full max-w-4xl mx-auto bg-white p-6 md:p-12 rounded-[32px] md:rounded-[40px] shadow-sm border border-gray-100 text-[#2d1f2d] font-sans">
+              <style dangerouslySetInnerHTML={{ __html: `
+                @media print {
+                  .policy-section { page-break-inside: auto; }
+                  .policy-section h3 { page-break-after: avoid; }
+                }
+                #admin-policy-view {
+                  padding-top: 10mm;
+                  padding-bottom: 10mm;
+                  background-color: #ffffff;
+                }
+              `}} />
+              <div id="admin-policy-view">
+                <div className="flex flex-col sm:flex-row justify-between items-start mb-12 border-b-2 border-gray-100 pb-10 gap-8 policy-section">
                  <div className="w-full sm:w-auto">
                     <div className="flex items-center gap-3 mb-6">
                       <div className="bg-[#e91e8c] p-1.5 rounded-lg"><Shield className="text-white" size={24}/></div>
@@ -57,7 +123,7 @@ const PolicyDetailModal = ({ policy, user, onClose }: { policy: Policy, user: Us
                     </div>
                  </div>
                  <div className="text-left sm:text-right w-full sm:w-auto">
-                    <h1 className="text-xl font-black uppercase text-[#2d1f2d] tracking-widest mb-1">Administrative Record</h1>
+                    <h1 className="text-xl font-black uppercase text-[#2d1f2d] tracking-widest mb-1">CERTIFICATE OF MOTOR INSURANCE</h1>
                     <div className="space-y-1 mt-6">
                        <div className="flex flex-col">
                           <span className="text-[8px] font-black text-gray-300 uppercase">Policy Number</span>
@@ -71,14 +137,23 @@ const PolicyDetailModal = ({ policy, user, onClose }: { policy: Policy, user: Us
                  </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12 mb-12">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12 mb-12 policy-section">
                  <div className="space-y-6">
                     <div className="border-l-4 border-[#e91e8c] pl-6 py-1">
                        <h3 className="text-[10px] font-black uppercase text-gray-400 tracking-widest mb-4">Policyholder Details</h3>
                        <div className="space-y-3">
                           <p className="text-lg font-black tracking-tight leading-none">{user?.name || 'Unknown Client'}</p>
                           <div className="text-xs font-bold text-gray-500 space-y-1">
-                             <p className="flex items-center gap-2"><MapPin size={12}/> {policy.details.addressLine1 || policy.details.address}, {policy.details.postcode}</p>
+                             <p className="flex items-center gap-2">
+                               <MapPin size={12}/> 
+                               {[
+                                 policy.details.addressLine1 || policy.details.address,
+                                 policy.details.addressLine2,
+                                 policy.details.city,
+                                 policy.details.county,
+                                 policy.details.postcode
+                               ].filter(Boolean).join(', ')}
+                             </p>
                              <p className="flex items-center gap-2"><Mail size={12}/> {user?.email}</p>
                              <p className="flex items-center gap-2"><Phone size={12}/> {user?.phone || 'Not provided'}</p>
                           </div>
@@ -124,6 +199,14 @@ const PolicyDetailModal = ({ policy, user, onClose }: { policy: Policy, user: Us
                              <p className="text-[8px] font-black text-gray-300 uppercase mb-1">Year</p>
                              <p className="text-xs font-bold">{policy.details.year}</p>
                           </div>
+                          <div>
+                             <p className="text-[8px] font-black text-gray-300 uppercase mb-1">Engine Size</p>
+                             <p className="text-xs font-bold">{policy.details.engine_size || policy.details.engineCC || 'N/A'}</p>
+                          </div>
+                          <div>
+                             <p className="text-[8px] font-black text-gray-300 uppercase mb-1">Colour</p>
+                             <p className="text-xs font-bold">{policy.details.color || policy.details.colour || 'N/A'}</p>
+                          </div>
                        </div>
                     </div>
 
@@ -138,7 +221,7 @@ const PolicyDetailModal = ({ policy, user, onClose }: { policy: Policy, user: Us
                  </div>
               </div>
 
-              <div className="bg-[#2d1f2d] p-6 md:p-10 rounded-[32px] md:rounded-[48px] text-white relative overflow-hidden">
+              <div className="bg-[#2d1f2d] p-6 md:p-10 rounded-[32px] md:rounded-[48px] text-white relative overflow-hidden policy-section">
                  <div className="relative z-10 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-8">
                     <div className="space-y-4 w-full lg:w-auto">
                        <div className="flex items-center gap-3">
@@ -178,12 +261,27 @@ const PolicyDetailModal = ({ policy, user, onClose }: { policy: Policy, user: Us
               </div>
 
               {policy.notes && (
-                <div className="mt-12 p-8 bg-yellow-50 border border-yellow-100 rounded-[32px]">
+                <div className="mt-12 p-8 bg-yellow-50 border border-yellow-100 rounded-[32px] policy-section">
                    <h3 className="text-[10px] font-black uppercase text-yellow-600 tracking-widest mb-4 flex items-center gap-2"><StickyNote size={14}/> Internal Admin Notes</h3>
                    <p className="text-sm text-gray-700 italic leading-relaxed">"{policy.notes}"</p>
                 </div>
               )}
 
+              <div className="mt-12 pt-10 border-t border-gray-100 flex flex-col items-center text-center gap-6 policy-section">
+                 <div className="flex flex-col items-center gap-4 mb-4">
+                    <div className="w-32 h-12 border-b border-gray-300 flex items-end justify-center pb-1">
+                       <span className="font-serif italic text-gray-400 text-sm">SwiftPolicy Digital</span>
+                    </div>
+                    <p className="text-[8px] font-black uppercase tracking-widest text-gray-300">Authorised Signatory</p>
+                 </div>
+                 <div className="text-[9px] text-gray-400 leading-relaxed max-w-2xl space-y-2">
+                    <p className="font-bold">SwiftPolicy Insurance Services is a brand of Autoline Direct Insurance Consultants Ltd.</p>
+                    <p>Autoline Direct Insurance Consultants Ltd is authorised and regulated by the Financial Conduct Authority (FCA), firm reference number 481413. Registered Office: Crown House, 27 Old Gloucester Street, London WC1N 3AX.</p>
+                    <p>This document is an administrative record and serves as a Certificate of Motor Insurance. Please keep it in a safe place. You can manage your policy 24/7 at www.swiftpolicy.co.uk.</p>
+                 </div>
+              </div>
+
+            </div>
            </div>
         </div>
       </div>
@@ -347,7 +445,7 @@ export const AdminDashboard: React.FC<{ initialTab?: string }> = ({ initialTab }
                            (p.displayId && p.displayId.toLowerCase().includes(search.toLowerCase())) ||
                            p.details.vrm.toLowerCase().includes(search.toLowerCase()) ||
                            owner.toLowerCase().includes(search.toLowerCase());
-      const matchesStatus = statusFilter === 'All' || p.status === statusFilter;
+      const matchesStatus = statusFilter === 'All' ? p.status !== 'Deleted' : p.status === statusFilter;
       const matchesType = typeFilter === 'All' || (typeFilter === 'Annual' ? (p.policy_type === 'ANNUAL' || !p.policy_type) : p.policy_type === 'ONE_MONTH');
       return matchesSearch && matchesStatus && matchesType;
     });
@@ -358,7 +456,9 @@ export const AdminDashboard: React.FC<{ initialTab?: string }> = ({ initialTab }
 
   const handleAdminAction = async (action: string, id: string, extra?: any) => {
     if (action === 'POLICY_REMOVE') {
-       if (window.confirm("Permanently delete this policy record?")) removePolicy(id, "Administrative removal.");
+       if (window.confirm("Are you sure you want to delete this policy? This action will deactivate the policy and remove it from active records.")) {
+         removePolicy(id, "Administrative soft-deletion.");
+       }
        return;
     }
 
@@ -644,7 +744,9 @@ export const AdminDashboard: React.FC<{ initialTab?: string }> = ({ initialTab }
                                        {(p.status === 'Cancelled' || p.status === 'Suspended') && (
                                          <button onClick={() => handleAdminAction('POLICY_STATUS', p.id, 'Active')} className="p-2 bg-green-50 text-green-600 rounded-lg hover:bg-green-600 hover:text-white transition-all" title="Reactivate Policy"><Power size={16}/></button>
                                        )}
-                                       <button onClick={() => { if(confirm("Permanently delete this policy record?")) handleAdminAction('POLICY_REMOVE', p.id); }} className="p-2 bg-gray-100 text-gray-400 rounded-lg hover:bg-red-600 hover:text-white transition-all" title="Remove Record"><Trash2 size={16}/></button>
+                                       {p.status !== 'Deleted' && (
+                                         <button onClick={() => handleAdminAction('POLICY_REMOVE', p.id)} className="p-2 bg-gray-100 text-gray-400 rounded-lg hover:bg-red-600 hover:text-white transition-all" title="Delete Policy"><Trash2 size={16}/></button>
+                                       )}
                                     </div>
                                  </td>
                               </tr>
@@ -748,12 +850,18 @@ export const AdminDashboard: React.FC<{ initialTab?: string }> = ({ initialTab }
                <section>
                   <h3 className="text-sm font-black uppercase text-gray-400 tracking-widest mb-6 flex items-center gap-3"><Package size={18}/> Registry Entries</h3>
                   <div className="space-y-4">
-                     {policies.filter(p => p.userId === viewingClient.id).map(p => (
+                     {policies.filter(p => p.userId === viewingClient.id && p.status !== 'Deleted').map(p => (
                         <div key={p.id} className="p-6 bg-gray-50 border border-gray-100 rounded-[32px] flex items-center justify-between">
                            <div className="flex items-center gap-4"><Shield className="text-[#e91e8c]" size={24}/><p className="font-black text-xl uppercase tracking-tighter leading-none">{p.details.vrm}</p></div>
-                           <button onClick={() => setViewingPolicy(p)} className="p-4 bg-white border border-gray-100 rounded-2xl text-gray-400 hover:text-[#e91e8c] transition-all"><Eye size={18}/></button>
+                           <div className="flex gap-2">
+                              <button onClick={() => setViewingPolicy(p)} className="p-4 bg-white border border-gray-100 rounded-2xl text-gray-400 hover:text-[#e91e8c] transition-all" title="View Details"><Eye size={18}/></button>
+                              <button onClick={() => handleAdminAction('POLICY_REMOVE', p.id)} className="p-4 bg-white border border-gray-100 rounded-2xl text-gray-400 hover:text-red-600 transition-all" title="Delete Policy"><Trash2 size={18}/></button>
+                           </div>
                         </div>
                      ))}
+                     {policies.filter(p => p.userId === viewingClient.id && p.status !== 'Deleted').length === 0 && (
+                       <p className="text-center py-10 text-gray-300 font-black uppercase tracking-widest text-[10px]">No active policies found.</p>
+                     )}
                   </div>
                </section>
             </div>

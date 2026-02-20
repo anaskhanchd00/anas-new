@@ -143,8 +143,12 @@ export interface User {
   phone?: string;
   dob?: string;
   address?: string;
+  address_line1?: string;
+  address_line2?: string;
   city?: string;
+  county?: string;
   state?: string;
+  postcode?: string;
   role: 'customer' | 'admin';
   status: UserStatus;
   is_profile_enabled?: boolean;
@@ -198,6 +202,9 @@ export interface VehicleDetails {
   licenceNumber: string;
   address: string;
   addressLine1?: string;
+  addressLine2?: string;
+  city?: string;
+  county?: string;
   postcode?: string;
   ncb: string;
   excess: string;
@@ -213,6 +220,8 @@ export interface VehicleDetails {
   usageType?: string;
   engineCC?: string;
   engine_size?: string;
+  color?: string;
+  colour?: string;
   cardLastFour?: string;
   cardholderName?: string;
   cardExpiry?: string;
@@ -298,7 +307,9 @@ export interface QuoteData {
   additionalDrivers: AdditionalDriver[];
   postcode: string;
   addressLine1: string;
+  addressLine2: string;
   city: string;
+  county: string;
   yearsAtAddress: string;
   homeOwnership: string;
   coverLevel: string;

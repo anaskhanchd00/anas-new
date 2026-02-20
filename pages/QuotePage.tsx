@@ -37,7 +37,7 @@ const INITIAL_STATE: QuoteData = {
   mainDriverHistory: { hasConvictions: false, convictions: [], hasClaims: false, claims: [] },
   ncbYears: '5', isCurrentlyInsured: true, hasPreviousCancellations: false,
   additionalDrivers: [],
-  postcode: '', addressLine1: '', city: '', yearsAtAddress: '5+', homeOwnership: 'Owner',
+  postcode: '', addressLine1: '', addressLine2: '', city: '', county: '', yearsAtAddress: '5+', homeOwnership: 'Owner',
   coverLevel: 'Comprehensive', policyStartDate: new Date().toISOString().split('T')[0], voluntaryExcess: '£250',
   addons: { breakdown: false, legal: false, courtesyCar: false, windscreen: false, protectedNcb: false, keyCover: false },
   paymentFrequency: 'monthly', payerType: 'individual',
@@ -147,9 +147,13 @@ const QuotePage: React.FC = () => {
     const result = lookupMethod === 'REG' ? await lookupVehicle(formData.vrm) : await lookupVIN(formData.vin || '');
     if (result.success && result.data) {
       setFormData(prev => ({ 
-        ...prev, ...result.data, 
+        ...prev, 
+        ...result.data, 
         year: result.data.year?.toString() || result.data.yearOfManufacture?.toString() || '',
-        vrm: result.data.registration || prev.vrm
+        vrm: result.data.registration || prev.vrm,
+        fuel_type: result.data.fuelType || result.data.fuel_type || prev.fuel_type,
+        engine_size: result.data.engineSize || result.data.engine_size || prev.engine_size,
+        color: result.data.color || result.data.colour || prev.color
       }));
       setIsManualMode(false);
     } else {
@@ -190,8 +194,17 @@ const QuotePage: React.FC = () => {
         }
       });
       const data = JSON.parse(response.text || '{"addresses": []}');
-      if (data.addresses?.length > 0) setAddressResults(data.addresses.map((a: any) => `${a.line1}, ${a.city}`));
-      else setAddressError("Registry returned zero matches for this postcode.");
+      if (data.addresses?.length > 0) {
+        setAddressResults(data.addresses.map((a: any) => ({
+          line1: a.line1,
+          line2: a.line2 || '',
+          city: a.city,
+          county: a.county || '',
+          full: `${a.line1}${a.line2 ? ', ' + a.line2 : ''}, ${a.city}${a.county ? ', ' + a.county : ''}`
+        })));
+      } else {
+        setAddressError("Registry returned zero matches for this postcode.");
+      }
     } catch (err) {
       setAddressError("Postcode identification service unreachable.");
     } finally {
@@ -230,7 +243,13 @@ const QuotePage: React.FC = () => {
     try {
       let activeUserId = user?.id;
       if (!activeUserId) {
-        const created = await signup(`${formData.firstName} ${formData.lastName}`, formData.email, authForm.password);
+        const created = await signup(`${formData.firstName} ${formData.lastName}`, formData.email, authForm.password, {
+          address_line1: formData.addressLine1,
+          address_line2: formData.addressLine2,
+          city: formData.city,
+          county: formData.county,
+          postcode: formData.postcode
+        });
         if (!created) { setIsProcessing(false); return; }
         activeUserId = JSON.parse(localStorage.getItem('sp_session') || '{}').id;
       }
@@ -338,12 +357,49 @@ const QuotePage: React.FC = () => {
                   </div>
                   {addressResults.length > 0 && (
                     <div className="absolute top-full left-0 right-0 z-50 mt-2 bg-white border border-gray-100 rounded-2xl shadow-2xl max-h-48 overflow-y-auto animate-in slide-in-from-top-2">
-                      {addressResults.map((addr, i) => (
-                        <button key={i} onClick={() => { const parts = addr.split(','); setFormData({...formData, addressLine1: parts[0], city: parts[1] || ''}); setAddressResults([]); }} className="w-full text-left px-6 py-4 text-sm font-bold text-gray-600 hover:bg-pink-50 hover:text-[#e91e8c] border-b border-gray-50 last:border-0">{addr}</button>
+                      {addressResults.map((addr: any, i) => (
+                        <button 
+                          key={i} 
+                          onClick={() => { 
+                            setFormData({
+                              ...formData, 
+                              addressLine1: addr.line1, 
+                              addressLine2: addr.line2,
+                              city: addr.city,
+                              county: addr.county
+                            }); 
+                            setAddressResults([]); 
+                          }} 
+                          className="w-full text-left px-6 py-4 text-sm font-bold text-gray-600 hover:bg-pink-50 hover:text-[#e91e8c] border-b border-gray-50 last:border-0"
+                        >
+                          {addr.full}
+                        </button>
                       ))}
                     </div>
                   )}
                 </div>
+                {formData.addressLine1 && (
+                  <div className="grid grid-cols-1 gap-4 animate-in fade-in slide-in-from-top-2">
+                    <div>
+                      <FormLabel label="Address Line 1" />
+                      <input className="w-full bg-gray-50 border border-gray-100 rounded-2xl px-6 py-4 text-[#2d1f2d] font-bold outline-none" value={formData.addressLine1} onChange={e => setFormData({...formData, addressLine1: e.target.value})} />
+                    </div>
+                    <div>
+                      <FormLabel label="Address Line 2 (Optional)" />
+                      <input className="w-full bg-gray-50 border border-gray-100 rounded-2xl px-6 py-4 text-[#2d1f2d] font-bold outline-none" value={formData.addressLine2} onChange={e => setFormData({...formData, addressLine2: e.target.value})} />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <FormLabel label="City" />
+                        <input className="w-full bg-gray-50 border border-gray-100 rounded-2xl px-6 py-4 text-[#2d1f2d] font-bold outline-none" value={formData.city} onChange={e => setFormData({...formData, city: e.target.value})} />
+                      </div>
+                      <div>
+                        <FormLabel label="County" />
+                        <input className="w-full bg-gray-50 border border-gray-100 rounded-2xl px-6 py-4 text-[#2d1f2d] font-bold outline-none" value={formData.county} onChange={e => setFormData({...formData, county: e.target.value})} />
+                      </div>
+                    </div>
+                  </div>
+                )}
                 <div>
                   <FormLabel label="Time at Current Address" />
                   <select className="w-full bg-gray-50 border border-gray-100 rounded-2xl px-6 py-4 text-[#2d1f2d] font-bold focus:border-[#e91e8c] outline-none" value={formData.yearsAtAddress} onChange={e => setFormData({...formData, yearsAtAddress: e.target.value})}>
@@ -563,19 +619,58 @@ const QuotePage: React.FC = () => {
                     {[{ id: 'monthly', label: 'Monthly Direct Debit', desc: 'Spread the cost.', disabled: formData.policy_type === 'ONE_MONTH' }, { id: 'annually', label: 'Annual Payment', desc: 'Save on credit charges.' }].map(opt => (
                       <button 
                         key={opt.id} 
+                        type="button"
                         disabled={opt.disabled}
                         onClick={() => setFormData({...formData, paymentFrequency: opt.id as any})} 
-                        className={`p-6 rounded-[32px] border-2 text-left transition-all ${formData.paymentFrequency === opt.id ? 'border-[#e91e8c] bg-pink-50' : 'border-gray-50 text-gray-400 hover:border-gray-200'} ${opt.disabled ? 'opacity-30 grayscale cursor-not-allowed border-dashed' : ''}`}
+                        className={`p-6 rounded-[32px] border-2 text-left transition-all ${formData.paymentFrequency === opt.id ? 'border-[#e91e8c] bg-pink-50 shadow-md' : 'border-gray-50 text-gray-400 hover:border-gray-200'} ${opt.disabled ? 'opacity-30 grayscale cursor-not-allowed border-dashed' : 'cursor-pointer'}`}
                       >
                         <p className={`font-black text-[10px] uppercase tracking-widest mb-1 ${formData.paymentFrequency === opt.id ? 'text-[#e91e8c]' : 'text-gray-400'}`}>{opt.label}</p>
-                        <p className="text-[11px] text-gray-400 font-medium">{opt.disabled ? 'Restricted for short-term.' : opt.desc}</p>
+                        <p className="text-[11px] text-gray-400 font-medium">{opt.disabled ? 'Restricted for 1 Month Insurance' : opt.desc}</p>
                       </button>
                     ))}
                   </div>
                 </div>
                 <div className="p-8 bg-gray-50 rounded-[40px] border border-gray-100"><div className="flex items-center gap-4 mb-6"><div className="p-3 bg-white rounded-2xl shadow-sm"><Lock size={20} className="text-gray-400" /></div><p className="text-xs font-bold text-gray-500">Secure Direct Debit Gateway</p></div><p className="text-[10px] text-gray-400 leading-relaxed italic">Payment details are encrypted and handled via our FCA-compliant clearing partner. You will be prompted for secure verification in the next step.</p></div>
               </div>
-              <div className="space-y-6"><div className="bg-[#2d1f2d] p-10 rounded-[56px] text-white shadow-2xl relative overflow-hidden"><div className="absolute top-0 right-0 w-32 h-32 bg-[#e91e8c]/10 rounded-bl-[80px]" /><p className="text-[10px] font-black uppercase tracking-[0.4em] text-[#e91e8c] mb-10">Premium Summary</p><div className="space-y-4 mb-12"><div className="flex justify-between text-xs font-black uppercase tracking-widest opacity-40"><span>Base Rate</span><span>£{premiumBreakdown.base.toFixed(0)}</span></div><div className="flex justify-between text-xs font-black uppercase tracking-widest opacity-40"><span>NCB Saving</span><span className="text-green-400">-£{Math.abs(premiumBreakdown.ncbDiscount).toFixed(0)}</span></div><div className="flex justify-between text-xs font-black uppercase tracking-widest"><span>Net Total</span><span className="text-2xl font-black font-outfit">£{premiumBreakdown.total.toFixed(2)}</span></div></div><div className="flex items-center gap-3 text-[9px] font-black uppercase tracking-[0.2em] opacity-40"><Shield size={12}/> Guaranteed for 30 Days</div></div></div>
+              <div className="space-y-6">
+                <div className="bg-[#2d1f2d] p-10 rounded-[56px] text-white shadow-2xl relative overflow-hidden">
+                  <div className="absolute top-0 right-0 w-32 h-32 bg-[#e91e8c]/10 rounded-bl-[80px]" />
+                  <p className="text-[10px] font-black uppercase tracking-[0.4em] text-[#e91e8c] mb-10">Premium Summary</p>
+                  <div className="space-y-4 mb-12">
+                    <div className="flex justify-between text-xs font-black uppercase tracking-widest opacity-40">
+                      <span>Base Rate</span>
+                      <span>£{premiumBreakdown.base.toFixed(0)}</span>
+                    </div>
+                    <div className="flex justify-between text-xs font-black uppercase tracking-widest opacity-40">
+                      <span>NCB Saving</span>
+                      <span className="text-green-400">-£{Math.abs(premiumBreakdown.ncbDiscount).toFixed(0)}</span>
+                    </div>
+                    <div className="flex justify-between text-xs font-black uppercase tracking-widest">
+                      <span>Net Total</span>
+                      <span className="text-2xl font-black font-outfit">£{premiumBreakdown.total.toFixed(2)}</span>
+                    </div>
+                  </div>
+                  
+                  {formData.paymentFrequency === 'monthly' && formData.policy_type === 'ANNUAL' && (
+                    <div className="mt-8 pt-8 border-t border-white/10 animate-in fade-in slide-in-from-top-4">
+                      <div className="flex justify-between items-center">
+                        <div>
+                          <p className="text-[10px] font-black uppercase tracking-widest text-[#e91e8c]">Monthly Installment</p>
+                          <p className="text-3xl font-black font-outfit mt-1">£{(premiumBreakdown.total / 12).toFixed(2)}</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-[8px] font-black uppercase tracking-widest text-white/30">Total of 12 payments</p>
+                          <p className="text-[10px] font-bold text-white/60 mt-1">0% APR Interest Free</p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  
+                  <div className="flex items-center gap-3 text-[9px] font-black uppercase tracking-[0.2em] opacity-40 mt-8">
+                    <Shield size={12}/> Guaranteed for 30 Days
+                  </div>
+                </div>
+              </div>
             </div>
             <div className="pt-10 border-t border-gray-100 flex justify-between">
               <button onClick={handleBack} className="px-10 py-5 text-gray-400 font-black uppercase tracking-widest text-[10px] hover:text-[#2d1f2d] transition-all flex items-center gap-2"><ChevronLeft size={16}/> Back</button>
